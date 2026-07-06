@@ -1,0 +1,1270 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Skylog — Chelan Butte XC</title>
+
+<!-- CesiumJS loader: official CDN first, jsDelivr as fallback -->
+<script>
+window.__cesiumReady = new Promise((resolve, reject) => {
+  const sources = [
+    {
+      js:   "https://cesium.com/downloads/cesiumjs/releases/1.126/Build/Cesium/Cesium.js",
+      css:  "https://cesium.com/downloads/cesiumjs/releases/1.126/Build/Cesium/Widgets/widgets.css",
+      base: "https://cesium.com/downloads/cesiumjs/releases/1.126/Build/Cesium/"
+    },
+    {
+      js:   "https://cdn.jsdelivr.net/npm/cesium@1.126.0/Build/Cesium/Cesium.js",
+      css:  "https://cdn.jsdelivr.net/npm/cesium@1.126.0/Build/Cesium/Widgets/widgets.css",
+      base: "https://cdn.jsdelivr.net/npm/cesium@1.126.0/Build/Cesium/"
+    }
+  ];
+  (function tryNext(i) {
+    if (i >= sources.length) { reject(new Error("All CesiumJS CDN sources failed")); return; }
+    const s = sources[i];
+    window.CESIUM_BASE_URL = s.base;   // must be set before Cesium.js executes
+    const link = document.createElement("link");
+    link.rel = "stylesheet"; link.href = s.css;
+    document.head.appendChild(link);
+    const el = document.createElement("script");
+    el.src = s.js;
+    el.onload = () => (typeof Cesium !== "undefined") ? resolve() : (el.remove(), link.remove(), tryNext(i + 1));
+    el.onerror = () => { el.remove(); link.remove(); tryNext(i + 1); };
+    document.head.appendChild(el);
+  })(0);
+});
+</script>
+
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=IBM+Plex+Mono:wght@400;600&display=swap" rel="stylesheet" />
+
+<style>
+  :root {
+    --panel: rgba(12, 18, 26, 0.88);
+    --panel-soft: rgba(12, 18, 26, 0.72);
+    --ink: #e9eef4;
+    --muted: #93a1b0;
+    --accent: #ffb454;      /* instrument amber */
+    --sky: #6fb7ff;         /* track blue */
+    --line: rgba(255, 255, 255, 0.09);
+    --radius: 14px;
+    --font-ui: "Space Grotesk", system-ui, sans-serif;
+    --font-data: "IBM Plex Mono", ui-monospace, monospace;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; overflow: hidden; background: #05080c; }
+  body { font-family: var(--font-ui); color: var(--ink); }
+
+  #cesiumContainer { position: absolute; inset: 0; }
+  .cesium-viewer-bottom { left: 8px !important; }  /* keep data attribution visible, tucked left */
+
+  /* ---------- flight card ---------- */
+  .flight-card {
+    position: absolute; top: 16px; left: 16px; z-index: 5;
+    width: min(320px, calc(100vw - 32px));
+    background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius);
+    padding: 16px 18px 14px; backdrop-filter: blur(10px);
+  }
+  .eyebrow {
+    font-family: var(--font-data); font-size: 10.5px; letter-spacing: 0.22em;
+    color: var(--accent); text-transform: uppercase; margin: 0 0 6px;
+  }
+  .flight-card h1 { font-size: 19px; font-weight: 700; margin: 0 0 4px; letter-spacing: 0.01em; }
+  .flight-meta { font-size: 12.5px; color: var(--muted); margin: 0 0 12px; }
+  .stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px 14px; border-top: 1px solid var(--line); padding-top: 12px; }
+  .stat b { display: block; font-family: var(--font-data); font-size: 15px; font-weight: 600; color: var(--ink); }
+  .stat span { font-size: 10.5px; color: var(--muted); letter-spacing: 0.06em; text-transform: uppercase; }
+
+  /* pilot's description, collapsible */
+  .desc { margin: 12px 0 0; border-top: 1px solid var(--line); padding-top: 10px; }
+  .desc-text { margin: 0; font-size: 12px; line-height: 1.5; color: var(--muted); white-space: pre-wrap; }
+  .desc-text.clamp { display: -webkit-box; -webkit-line-clamp: 3; line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+  .desc-toggle {
+    margin-top: 4px; padding: 2px 0; background: none; border: 0; cursor: pointer;
+    color: var(--accent); font-family: var(--font-ui); font-size: 11.5px;
+  }
+
+  /* ---------- bottom flight strip ---------- */
+  .strip {
+    position: absolute; left: 16px; right: 16px; bottom: 14px; z-index: 5;
+    background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius);
+    backdrop-filter: blur(10px);
+    display: grid; grid-template-columns: auto auto 1fr auto; gap: 14px; align-items: center;
+    padding: 10px 14px;
+  }
+  .controls { display: flex; align-items: center; gap: 10px; }
+  button { font-family: inherit; }
+  .btn-play {
+    width: 44px; height: 44px; border-radius: 50%; border: 1px solid var(--accent);
+    background: rgba(255, 180, 84, 0.12); color: var(--accent); cursor: pointer;
+    display: grid; place-items: center; transition: background 0.15s;
+  }
+  .btn-play:hover { background: rgba(255, 180, 84, 0.25); }
+  .btn-play svg { width: 18px; height: 18px; fill: currentColor; }
+  .seg { display: flex; border: 1px solid var(--line); border-radius: 9px; overflow: hidden; }
+  .seg button {
+    background: transparent; border: 0; color: var(--muted); cursor: pointer;
+    font-family: var(--font-data); font-size: 11.5px; padding: 7px 10px;
+  }
+  .seg button + button { border-left: 1px solid var(--line); }
+  .seg button[aria-pressed="true"] { background: rgba(255, 180, 84, 0.16); color: var(--accent); }
+  .seg-label { font-size: 10px; color: var(--muted); letter-spacing: 0.1em; text-transform: uppercase; display: block; margin-bottom: 3px; }
+
+  .telemetry { display: flex; gap: 16px; font-family: var(--font-data); }
+  .telemetry .cell b { display: block; font-size: 16px; font-weight: 600; min-width: 74px; }
+  .telemetry .cell span { font-size: 10px; color: var(--muted); letter-spacing: 0.1em; }
+  #vario.up { color: var(--accent); }
+  #vario.down { color: var(--sky); }
+
+  .profile-wrap { position: relative; height: 72px; min-width: 140px; }
+  #profile { position: absolute; inset: 0; width: 100%; height: 100%; cursor: crosshair; border-radius: 8px; touch-action: none; }
+
+  .right-cluster { display: flex; align-items: center; gap: 14px; }
+  .clock { font-family: var(--font-data); font-size: 12.5px; text-align: right; color: var(--ink); }
+  .clock small { display: block; color: var(--muted); font-size: 10.5px; }
+
+  button:focus-visible, input:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+  /* ---------- status toast ---------- */
+  .toast {
+    position: absolute; left: 50%; transform: translateX(-50%);
+    bottom: 112px; z-index: 15;
+    max-width: min(560px, calc(100vw - 40px));
+    background: var(--panel); border: 1px solid rgba(255, 125, 107, 0.55);
+    border-radius: 10px; padding: 10px 38px 10px 14px;
+    font-size: 12.5px; line-height: 1.5; color: var(--ink);
+    display: none; backdrop-filter: blur(10px);
+  }
+  .toast.show { display: block; }
+  .toast button {
+    position: absolute; top: 6px; right: 6px;
+    background: none; border: 0; color: var(--muted); cursor: pointer; font-size: 14px;
+  }
+
+  /* ---------- photo panel (half-screen, non-modal) ----------
+     Occupies the right half; the globe stays live on the left, and the
+     bottom flight strip stays clear so you can scrub while a photo is open. */
+  .lightbox {
+    position: fixed; top: 16px; right: 16px; bottom: 108px; z-index: 18;
+    width: min(46vw, 640px);
+    background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius);
+    backdrop-filter: blur(10px); padding: 14px;
+    display: none; flex-direction: column;
+  }
+  .lightbox.open { display: flex; }
+  .lb-frame { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+  .lb-frame img {
+    flex: 1; min-height: 0; width: 100%; object-fit: contain;
+    border-radius: var(--radius); border: 1px solid var(--line);
+    display: block; background: #05080c; box-shadow: 0 24px 80px rgba(0, 0, 0, 0.6);
+  }
+  /* group strip: circular thumbnails of the photos taken at this spot */
+  .lb-strip { display: none; gap: 8px; margin-top: 10px; overflow-x: auto; padding-bottom: 2px; flex: 0 0 auto; }
+  .lb-thumb {
+    flex: 0 0 auto; width: 42px; height: 42px; border-radius: 50%; padding: 0;
+    border: 2px solid var(--line); background-size: cover; background-position: center;
+    cursor: pointer; opacity: 0.65; transition: opacity 0.12s, border-color 0.12s, transform 0.12s;
+  }
+  .lb-thumb:hover { opacity: 1; transform: translateY(-1px); }
+  .lb-thumb.active { border-color: var(--accent); opacity: 1; }
+  .lb-bar { display: flex; align-items: flex-end; justify-content: space-between; gap: 12px; margin-top: 12px; flex-wrap: wrap; }
+  .lb-caption { font-size: 15px; font-weight: 500; }
+  #lbSpot { color: var(--accent); border-color: rgba(255, 180, 84, 0.5); }
+  .lb-chips { display: flex; gap: 8px; margin-top: 5px; flex-wrap: wrap; }
+  .chip {
+    font-family: var(--font-data); font-size: 11px; color: var(--muted);
+    border: 1px solid var(--line); border-radius: 999px; padding: 3px 9px; background: var(--panel-soft);
+  }
+  .lb-nav { display: flex; gap: 8px; }
+  .lb-nav button, .lb-close {
+    background: var(--panel); color: var(--ink); border: 1px solid var(--line);
+    border-radius: 9px; padding: 8px 14px; cursor: pointer; font-size: 13px;
+  }
+  .lb-nav button:hover, .lb-close:hover { border-color: var(--accent); color: var(--accent); }
+  .lb-close { position: absolute; top: 10px; right: 10px; padding: 5px 11px; z-index: 1; }
+  @media (max-width: 880px) {
+    .lightbox { left: 12px; right: 12px; top: 12px; width: auto; height: 50vh; bottom: auto; }
+  }
+
+  /* ---------- gate / splash ---------- */
+  .gate {
+    position: fixed; inset: 0; z-index: 30; background: #070b10;
+    display: flex; align-items: center; justify-content: center; padding: 20px;
+  }
+  .gate-card {
+    width: min(460px, 100%); background: var(--panel); border: 1px solid var(--line);
+    border-radius: var(--radius); padding: 26px 26px 22px;
+  }
+  .gate-card h2 { margin: 0 0 8px; font-size: 20px; }
+  .gate-card p { color: var(--muted); font-size: 13.5px; line-height: 1.55; margin: 0 0 16px; }
+  .gate-card a { color: var(--accent); }
+  .gate-card input {
+    width: 100%; background: rgba(255, 255, 255, 0.05); border: 1px solid var(--line);
+    border-radius: 9px; color: var(--ink); font-family: var(--font-data); font-size: 12.5px;
+    padding: 11px 12px; margin-bottom: 12px;
+  }
+  .gate-card .go {
+    width: 100%; background: var(--accent); color: #14100a; border: 0; border-radius: 9px;
+    padding: 11px; font-size: 14px; font-weight: 700; cursor: pointer;
+  }
+  .gate-err { color: #ff7d6b; font-size: 12.5px; margin: 10px 0 0; display: none; }
+  .loading { display: none; text-align: center; }
+  .loading .ring {
+    width: 42px; height: 42px; margin: 0 auto 14px; border-radius: 50%;
+    border: 3px solid var(--line); border-top-color: var(--accent); animation: spin 0.9s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  @media (prefers-reduced-motion: reduce) {
+    .loading .ring { animation: none; }
+  }
+
+  @media (max-width: 880px) {
+    .strip { grid-template-columns: 1fr; gap: 10px; }
+    .profile-wrap { height: 56px; }
+    .telemetry { justify-content: space-between; }
+    .right-cluster { justify-content: space-between; }
+    .flight-card { padding: 12px 14px; }
+    .stats { grid-template-columns: repeat(3, 1fr); gap: 6px; }
+    .stat b { font-size: 13px; }
+  }
+
+  /* ---------- compass ---------- */
+  .compass {
+    position: absolute; top: 16px; right: 16px; z-index: 6;
+    width: 46px; height: 46px; border-radius: 50%;
+    backdrop-filter: blur(8px); pointer-events: none;
+  }
+  .compass svg { width: 100%; height: 100%; display: block; }
+  .compass-ring { fill: var(--panel); stroke: var(--line); stroke-width: 1; }
+  .compass-view { fill: var(--accent); }                 /* fixed notch = view direction (screen up) */
+  .compass-north { fill: #ff3d6b; }
+  .compass-south { fill: #5b6b7a; }
+  #compassRose { transform-box: fill-box; transform-origin: center; }
+</style>
+</head>
+<body>
+
+<div id="cesiumContainer"></div>
+
+<!-- Compass: fixed top notch = view direction; the rose's red arrow points to true north -->
+<div class="compass" id="compass" title="Camera heading">
+  <svg viewBox="0 0 46 46" aria-hidden="true">
+    <circle class="compass-ring" cx="23" cy="23" r="21" />
+    <polygon class="compass-view" points="23,0 26,5 20,5" />
+    <g id="compassRose">
+      <polygon class="compass-north" points="23,8 27,23 23,19 19,23" />
+      <polygon class="compass-south" points="23,38 27,23 23,27 19,23" />
+    </g>
+  </svg>
+</div>
+
+<!-- Flight card -->
+<aside class="flight-card" aria-label="Flight information">
+  <p class="eyebrow">Skylog · Flight playback demo</p>
+  <h1 id="flightTitle">Chelan Butte XC</h1>
+  <p class="flight-meta" id="flightMeta">21 Jun 2026 · Robert Barlow · Ozone Photon</p>
+  <div class="stats">
+    <div class="stat"><b id="stDur">—</b><span>Duration</span></div>
+    <div class="stat"><b id="stMax">—</b><span>Max alt</span></div>
+    <div class="stat"><b id="stClimb">—</b><span>Best climb</span></div>
+  </div>
+  <div class="desc" id="descWrap" hidden>
+    <p class="desc-text clamp" id="flightDesc"></p>
+    <button class="desc-toggle" id="descToggle" aria-expanded="false">More</button>
+  </div>
+</aside>
+
+<!-- Bottom flight strip -->
+<div class="strip" role="region" aria-label="Playback controls">
+  <div class="controls">
+    <button class="btn-play" id="btnPlay" aria-label="Play flight">
+      <svg id="icoPlay" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+      <svg id="icoPause" viewBox="0 0 24 24" style="display:none"><path d="M6 5h4v14H6zM14 5h4v14h-4z"/></svg>
+    </button>
+    <div>
+      <span class="seg-label">Speed</span>
+      <div class="seg" id="speedSeg" role="group" aria-label="Playback speed">
+        <button data-mult="1" aria-pressed="false">1×</button>
+        <button data-mult="10" aria-pressed="false">10×</button>
+        <button data-mult="25" aria-pressed="true">25×</button>
+        <button data-mult="60" aria-pressed="false">60×</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="telemetry" aria-label="Live telemetry">
+    <div class="cell"><b id="alt">— m</b><span>ALTITUDE</span></div>
+    <div class="cell"><b id="spd">— km/h</b><span>GROUND SPD</span></div>
+    <div class="cell"><b id="vario">— m/s</b><span>VARIO</span></div>
+  </div>
+
+  <div class="profile-wrap">
+    <canvas id="profile" aria-label="Altitude profile scrubber"></canvas>
+  </div>
+
+  <div class="right-cluster">
+    <div>
+      <span class="seg-label">Camera</span>
+      <div class="seg" id="camSeg" role="group" aria-label="Camera mode">
+        <button data-cam="free" aria-pressed="false">Free</button>
+        <button data-cam="follow" aria-pressed="true">Follow</button>
+      </div>
+    </div>
+    <div class="clock"><span id="tUTC">—</span><small id="tElapsed">+00:00</small></div>
+  </div>
+</div>
+
+<div class="toast" id="toast" role="status">
+  <span id="toastMsg"></span>
+  <button id="toastClose" aria-label="Dismiss">✕</button>
+</div>
+
+<!-- Lightbox -->
+<div class="lightbox" id="lightbox" role="region" aria-label="Flight photo">
+  <button class="lb-close" id="lbClose" aria-label="Close photo">✕</button>
+  <div class="lb-frame">
+    <img id="lbImg" alt="Flight photo" />
+    <div class="lb-strip" id="lbStrip" role="group" aria-label="Photos at this spot"></div>
+    <div class="lb-bar">
+      <div>
+        <div class="lb-caption" id="lbCaption"></div>
+        <div class="lb-chips">
+          <span class="chip" id="lbSpot"></span>
+          <span class="chip" id="lbTime"></span>
+          <span class="chip" id="lbAlt"></span>
+          <span class="chip" id="lbCount"></span>
+        </div>
+      </div>
+      <div class="lb-nav">
+        <button id="lbPrev">← Prev</button>
+        <button id="lbNext">Next →</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Token gate / loading -->
+<div class="gate" id="gate">
+  <div class="gate-card">
+    <div id="gateForm">
+      <p class="eyebrow">Skylog · Demo setup</p>
+      <h2>Cesium ion access token</h2>
+      <p>This demo streams <b>Cesium World Terrain</b> and world imagery from Cesium ion.
+         Paste a token from your free account at
+         <a href="https://ion.cesium.com/tokens" target="_blank" rel="noopener">ion.cesium.com/tokens</a>
+         — or hard-code it in the <code>ION_TOKEN</code> constant at the top of this file.</p>
+      <input id="tokenInput" type="text" placeholder="eyJhbGciOi..." autocomplete="off" spellcheck="false" />
+      <button class="go" id="btnGo">Load flight</button>
+      <p class="gate-err" id="gateErr">That doesn't look like a token. Paste the full string from ion.cesium.com.</p>
+    </div>
+    <div class="loading" id="gateLoading">
+      <div class="ring"></div>
+      <p style="color:var(--muted);font-size:13.5px;margin:0">Streaming terrain</p>
+    </div>
+  </div>
+</div>
+
+<script>
+"use strict";
+
+/* ================= CONFIG ================= */
+const ION_TOKEN = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJqdGkiOiI0ZGMyZmRkYS05ODIxLTRiMzItYmExZi1iN2ZlODY3MmI5MTciLCJpZCI6NDUyNDkxLCJzdWIiOiJtZXJsaW4tcm9iIiwiaXNzIjoiaHR0cHM6Ly9hcGkuY2VzaXVtLmNvbSIsImF1ZCI6IkRlbW8iLCJpYXQiOjE3ODMxODczMjh9.8RoknkKReRusoei_OpjsaA-nMQyrc0vcJgGmFNrSOYc"; // ← paste your Cesium ion token here to skip the startup prompt
+
+/* =============== FLIGHT DATA ===============
+   Real flight bundle: a parsed IGC track + timestamped photos, loaded at
+   runtime from tracklog/flight.json (bundle schema: skylog-design-doc §3.3).
+   This replaces the prototype's synthetic DATA-GEN block; the viewer is now a
+   pure consumer of flight.json, exactly as §5 requires. */
+
+const FLIGHT_URL = "tracklog/flight.json";
+const RAD = Math.PI / 180;
+
+let pts = [];                 // {t, lat, lon, alt} — filled by loadBundle()
+let PHOTOS = [];              // resolved photo markers
+let T0 = 0, DT = 1, TOTAL = 0;
+let bundleBase = "";          // dir of flight.json, for resolving media paths
+let flownM = 0, maxAlt = -Infinity, minAlt = Infinity, bestClimb = 0;
+let W = 8;                    // climb window in samples (set from DT)
+
+function haversine(a, b) {
+  const dLat = (b.lat - a.lat) * RAD, dLon = (b.lon - a.lon) * RAD;
+  const s = Math.sin(dLat / 2) ** 2 +
+            Math.cos(a.lat * RAD) * Math.cos(b.lat * RAD) * Math.sin(dLon / 2) ** 2;
+  return 6371000 * 2 * Math.asin(Math.sqrt(s));
+}
+
+/* linear interpolation on the track, clamped at both ends (binary search:
+   the track is uniformly sampled, but a bsearch stays correct if it isn't) */
+function interpAt(t) {
+  if (!pts.length) return { t: 0, lat: 0, lon: 0, alt: 0 };
+  if (t <= 0) return pts[0];
+  if (t >= TOTAL) return pts[pts.length - 1];
+  let lo = 0, hi = pts.length - 1;
+  while (hi - lo > 1) {
+    const mid = (lo + hi) >> 1;
+    if (pts[mid].t <= t) lo = mid; else hi = mid;
+  }
+  const a = pts[lo], b = pts[hi], f = (t - a.t) / (b.t - a.t || 1);
+  return {
+    t,
+    lat: a.lat + (b.lat - a.lat) * f,
+    lon: a.lon + (b.lon - a.lon) * f,
+    alt: a.alt + (b.alt - a.alt) * f
+  };
+}
+
+/* fetch the flight bundle, then populate track, photos, headline stats + card */
+async function loadBundle() {
+  const res = await fetch(FLIGHT_URL);
+  if (!res.ok) throw new Error(`Couldn't load ${FLIGHT_URL} (HTTP ${res.status})`);
+  const b = await res.json();
+  bundleBase = FLIGHT_URL.replace(/[^/]*$/, "");   // e.g. "tracklog/"
+
+  T0 = Date.parse(b.track.t0);
+  DT = b.track.dt || 1;
+  pts = b.track.points.map(([t, lat, lon, alt]) => ({ t, lat, lon, alt }));
+  TOTAL = pts[pts.length - 1].t;
+
+  /* headline stats — recorded GNSS altitudes are real, so no grounding hack */
+  flownM = 0; maxAlt = -Infinity; minAlt = Infinity;
+  for (let i = 0; i < pts.length; i++) {
+    if (i) flownM += haversine(pts[i - 1], pts[i]);
+    maxAlt = Math.max(maxAlt, pts[i].alt);
+    minAlt = Math.min(minAlt, pts[i].alt);
+  }
+  W = Math.max(1, Math.round(15 / DT));            // 15 s climb window
+  bestClimb = 0;
+  for (let i = W; i < pts.length; i++) {
+    bestClimb = Math.max(bestClimb, (pts[i].alt - pts[i - W].alt) / (W * DT));
+  }
+
+  /* photo markers — lat/lon/alt already resolved against the track in the
+     bundle. tPos clamps the capture time into the flight window so photos
+     taken just before launch / after landing still pin to the track ends. */
+  PHOTOS = b.media
+    .filter(m => m.type === "photo" && m.status === "ready")
+    .map((m, i) => ({
+      i, t: m.t, tPos: Math.max(0, Math.min(TOTAL, m.t)),
+      lat: m.lat, lon: m.lon, alt: m.alt, caption: m.caption,
+      img: encodeURI(bundleBase + m.web),
+      thumb: encodeURI(bundleBase + (m.thumb || m.web))
+    }));
+
+  /* cluster photos taken at the same spot on the track (within GROUP_DIST_M),
+     so co-located shots collapse into one multiphoto marker */
+  const GROUP_DIST_M = 250;
+  groups = [];
+  for (const ph of PHOTOS) {
+    let g = groups.find(gr => haversine(gr, ph) < GROUP_DIST_M);
+    if (!g) { g = { lat: ph.lat, lon: ph.lon, alt: ph.alt, t: ph.t, members: [] }; groups.push(g); }
+    g.members.push(ph.i);
+    ph.group = g;
+  }
+
+  /* preload + decode the full-res photos up front so the lightbox switches
+     instantly instead of re-fetching several MB on every navigation. Keep the
+     Image on the photo so it stays in cache. */
+  for (const ph of PHOTOS) {
+    const im = new Image();
+    im.src = ph.img;
+    if (im.decode) im.decode().catch(() => {});
+    ph.full = im;
+  }
+
+  /* flight card */
+  document.title = `Skylog — ${b.title}`;
+  $("flightTitle").textContent = b.title;
+  const day = new Date(b.date + "T00:00:00Z");
+  const dateStr = day.toLocaleDateString("en-GB",
+    { day: "numeric", month: "short", year: "numeric", timeZone: "UTC" });
+  $("flightMeta").textContent = [dateStr, b.pilot, b.glider].filter(Boolean).join(" · ");
+  $("stDur").textContent =
+    `${Math.floor(TOTAL / 3600)}h ${pad(Math.floor((TOTAL % 3600) / 60))}m`;
+  $("stMax").textContent = Math.round(maxAlt) + " m";
+  $("stClimb").textContent = "+" + bestClimb.toFixed(1) + " m/s";
+
+  /* pilot's description, collapsed to 3 lines with a More/Less toggle */
+  const desc = (b.description || "").trim();
+  const descEl = $("flightDesc"), descToggle = $("descToggle");
+  if (desc) {
+    descEl.textContent = desc;
+    $("descWrap").hidden = false;
+    // only offer the toggle if the text actually overflows the clamped height
+    const overflows = descEl.scrollHeight > descEl.clientHeight + 1;
+    descToggle.hidden = !overflows;
+    if (!overflows) descEl.classList.remove("clamp");
+  } else {
+    $("descWrap").hidden = true;
+  }
+
+  buildSpeedControls();   // speed presets scaled to this flight's length
+}
+
+/* ================ PHOTO MARKER ================
+   Photos come from the flight bundle (loadBundle); each renders as a
+   magnifying-glass-style pin: a circular thumbnail lens floating on a short
+   amber stem, anchored (bottom) at the trackpoint so the lens sits ABOVE the
+   spot with the trackpoint dot right below it. */
+
+/* the canvas is taller than the lens to leave room for the stem below it */
+const MARKER_ASPECT = 1.34;                         // canvas height / width
+
+/* the pin's stem: an amber tail tapering from the lens bottom down to a point
+   at the very bottom of the canvas (which is the billboard's anchor = trackpoint) */
+function drawStem(g, size, H, topY) {
+  const cx = size / 2, tipY = H - 1, halfW = size * 0.11;
+  g.beginPath();
+  g.moveTo(cx - halfW, topY);
+  g.lineTo(cx + halfW, topY);
+  g.lineTo(cx, tipY);
+  g.closePath();
+  g.fillStyle = "#ffb454"; g.fill();
+  g.lineWidth = size * 0.03; g.strokeStyle = "#14100a"; g.stroke();
+}
+
+/* single photo: circle-cropped thumbnail lens with an amber ring, on a stem.
+   Returns a canvas (usable directly as a Cesium billboard image), or null. */
+function circleThumb(url, size = 128, ring = 8) {
+  return new Promise(resolve => {
+    const img = new Image();
+    img.onload = () => {
+      const c = document.createElement("canvas");
+      const H = Math.round(size * MARKER_ASPECT);
+      c.width = size; c.height = H;
+      const g = c.getContext("2d");
+      const r = size / 2;
+      drawStem(g, size, H, r * 2 - ring - 2);         // tail emerges from the lens bottom
+      g.save();                                        // cover-fit photo into the lens
+      g.beginPath(); g.arc(r, r, r - ring, 0, 7); g.closePath(); g.clip();
+      const s = Math.max(size / img.width, size / img.height);
+      const w = img.width * s, h = img.height * s;
+      g.drawImage(img, r - w / 2, r - h / 2, w, h);
+      g.restore();
+      g.beginPath(); g.arc(r, r, r - ring / 2, 0, 7);
+      g.lineWidth = ring; g.strokeStyle = "#ffb454"; g.stroke();
+      resolve(c);
+    };
+    img.onerror = () => resolve(null);
+    img.src = url;
+  });
+}
+
+/* "multiphoto" pin for photos grouped at one spot: the top thumbnail lens with
+   a card peeking behind it and a count badge, on a stem. */
+function stackThumb(url, count, size = 128, ring = 8) {
+  return new Promise(resolve => {
+    const img = new Image();
+    img.onload = () => {
+      const c = document.createElement("canvas");
+      const H = Math.round(size * MARKER_ASPECT);
+      c.width = size; c.height = H;
+      const g = c.getContext("2d");
+      const R = size * 0.30;                           // smaller lens so the back card + badge fit
+      const front = { x: size / 2, y: size * 0.49 };
+      const back = { x: size * 0.63, y: size * 0.36 }; // peeks up-right, kept inside the canvas
+      drawStem(g, size, H, front.y + R - ring);        // tail from the front lens bottom
+      // back card peeking behind the top photo
+      g.beginPath(); g.arc(back.x, back.y, R, 0, 7);
+      g.fillStyle = "#141b25"; g.fill();
+      g.lineWidth = ring; g.strokeStyle = "#ffb454"; g.stroke();
+      // top photo, circle-cropped
+      g.save();
+      g.beginPath(); g.arc(front.x, front.y, R - ring / 2, 0, 7); g.clip();
+      const s = Math.max((2 * R) / img.width, (2 * R) / img.height);   // cover-fit
+      const w = img.width * s, h = img.height * s;
+      g.drawImage(img, front.x - w / 2, front.y - h / 2, w, h);
+      g.restore();
+      g.beginPath(); g.arc(front.x, front.y, R - ring / 2, 0, 7);
+      g.lineWidth = ring; g.strokeStyle = "#ffb454"; g.stroke();
+      // count badge
+      const bx = size * 0.74, by = size * 0.68, br = size * 0.17;
+      g.beginPath(); g.arc(bx, by, br, 0, 7);
+      g.fillStyle = "#ffb454"; g.fill();
+      g.lineWidth = 4; g.strokeStyle = "#14100a"; g.stroke();
+      g.fillStyle = "#14100a"; g.textAlign = "center"; g.textBaseline = "middle";
+      g.font = `bold ${Math.round(br * 1.25)}px "IBM Plex Mono", ui-monospace, monospace`;
+      g.fillText(String(count), bx, by + 1);
+      resolve(c);
+    };
+    img.onerror = () => resolve(null);
+    img.src = url;
+  });
+}
+
+/* ================ HELPERS ================ */
+const $ = id => document.getElementById(id);
+const pad = n => String(n).padStart(2, "0");
+const fmtUTC = t => {
+  const d = new Date(T0 + t * 1000);
+  return `${pad(d.getUTCHours())}:${pad(d.getUTCMinutes())}:${pad(d.getUTCSeconds())} UTC`;
+};
+const fmtElapsed = t => {
+  t = Math.max(0, Math.round(t));
+  const h = Math.floor(t / 3600), m = Math.floor((t % 3600) / 60), s = t % 60;
+  return h ? `+${h}:${pad(m)}:${pad(s)}` : `+${pad(m)}:${pad(s)}`;
+};
+const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+function showToast(msg, sticky) {
+  $("toastMsg").textContent = msg;
+  $("toast").classList.add("show");
+  if (!sticky) setTimeout(() => $("toast").classList.remove("show"), 9000);
+}
+$("toastClose").addEventListener("click", () => $("toast").classList.remove("show"));
+
+/* expand/collapse the flight description */
+$("descToggle").addEventListener("click", () => {
+  const clamped = $("flightDesc").classList.toggle("clamp");
+  $("descToggle").textContent = clamped ? "More" : "Less";
+  $("descToggle").setAttribute("aria-expanded", String(!clamped));
+});
+
+/* track color ramp, scaled to the flight's max height (0 → maxAlt): low cyan
+   #2dd4ff → high magenta #ff3d9a. Both ends pop against green and brown terrain,
+   unlike the old amber which blended into brown. */
+function rampColor(alt) {
+  const f = Math.min(1, Math.max(0, alt / maxAlt));
+  const lo = [45, 212, 255], hi = [255, 61, 154];
+  return lo.map((c, i) => Math.round(c + (hi[i] - c) * f));
+}
+
+/* headline stats + flight card are populated by loadBundle() once fetched */
+
+/* ================ CESIUM ================ */
+let viewer, clock, posProp, cameraMode = "follow";
+let defaultMult = 25;   // playback speed; set from flight length by buildSpeedControls()
+let groups = [];        // photos clustered by location: {lat,lon,alt,t, members:[photoIndex]}
+
+async function initCesium(token) {
+  Cesium.Ion.defaultAccessToken = token;
+
+  await loadBundle();   // fetch flight.json → pts, PHOTOS, stats, card
+
+  const worldTerrain = Cesium.Terrain.fromWorldTerrain();
+
+  viewer = new Cesium.Viewer("cesiumContainer", {
+    terrain: worldTerrain,   // Cesium ion World Terrain
+    animation: false, timeline: false, geocoder: false, homeButton: false,
+    sceneModePicker: false, baseLayerPicker: false, navigationHelpButton: false,
+    fullscreenButton: false, infoBox: false, selectionIndicator: false
+  });
+  viewer.scene.globe.enableLighting = false;
+  viewer.scene.globe.depthTestAgainstTerrain = true;   // let terrain occlude track/glider/photos by depth
+  viewer.scene.screenSpaceCameraController.enableCollisionDetection = true;
+
+  /* --- sample real terrain under the track ---
+     Recorded GNSS altitudes are real and already agree with Cesium World
+     Terrain, so — unlike the prototype — we do NOT re-base them. We still
+     sample the ground under the track to draw the vertical tether lines and
+     the terrain-clamped shadow, and to surface a clear toast if terrain
+     fails to load (skylog-design-doc §5.3). */
+  const terrainProvider = await Promise.race([
+    new Promise(resolve => {
+      if (worldTerrain.ready) { resolve(worldTerrain.provider); return; }
+      const offReady = worldTerrain.readyEvent.addEventListener(p => { offReady(); resolve(p); });
+      const offErr = worldTerrain.errorEvent.addEventListener(() => { offErr(); resolve(null); });
+    }),
+    new Promise(resolve => setTimeout(() => resolve(null), 15000)) // don't hang forever
+  ]);
+
+  const SAMPLE_STRIDE = 6;                          // ~12s between real terrain samples
+  const sampleIdx = [];
+  for (let i = 0; i < pts.length; i += SAMPLE_STRIDE) sampleIdx.push(i);
+  if (sampleIdx[sampleIdx.length - 1] !== pts.length - 1) sampleIdx.push(pts.length - 1);
+
+  let sampled = null;
+  if (terrainProvider) {
+    try {
+      const cartos = sampleIdx.map(i => Cesium.Cartographic.fromDegrees(pts[i].lon, pts[i].lat));
+      sampled = await Cesium.sampleTerrainMostDetailed(terrainProvider, cartos);
+    } catch (e) {
+      console.warn("Terrain sampling failed:", e);
+      sampled = null;
+    }
+  }
+
+  /* Validate: heights must exist, be finite, and not be a flat sea of zeros
+     (which is what an ellipsoid fallback would effectively give us). */
+  const terrainOk = !!sampled &&
+    sampled.every(c => c && Number.isFinite(c.height)) &&
+    sampled.some(c => Math.abs(c.height) > 5);
+
+  /* If terrain is unavailable, the visible ground is the bare ellipsoid at
+     height 0 — so anchor the flight to 0, not to an invented elevation,
+     or the track floats hundreds of meters above the flat map. */
+  const groundAtSample = terrainOk ? sampled.map(c => c.height) : sampleIdx.map(() => 0);
+
+  if (terrainOk) {
+    console.log("Terrain OK — ground at launch:", groundAtSample[0].toFixed(0), "m");
+  } else {
+    showToast(
+      "Terrain elevation couldn't be loaded from Cesium ion — showing the flight above flat ground. " +
+      "Check that your token has access to the Cesium World Terrain asset and that " +
+      "assets.ion.cesium.com / api.cesium.com aren't blocked by your network.", true);
+  }
+
+  /* transient tile failures after startup: mention once, quietly */
+  if (terrainProvider && terrainProvider.errorEvent) {
+    let warned = false;
+    terrainProvider.errorEvent.addEventListener(() => {
+      if (!warned) { warned = true; console.warn("Some terrain tiles failed to load."); }
+    });
+  }
+
+  function groundHeightAt(i) {
+    let lo = 0; while (lo < sampleIdx.length - 1 && sampleIdx[lo + 1] < i) lo++;
+    const hi = Math.min(lo + 1, sampleIdx.length - 1);
+    const a = sampleIdx[lo], b = sampleIdx[hi];
+    const f = b === a ? 0 : (i - a) / (b - a);
+    return groundAtSample[lo] + (groundAtSample[hi] - groundAtSample[lo]) * f;
+  }
+
+  clock = viewer.clock;
+  clock.startTime = Cesium.JulianDate.fromDate(new Date(T0));
+  clock.stopTime = Cesium.JulianDate.addSeconds(clock.startTime, TOTAL, new Cesium.JulianDate());
+  clock.currentTime = clock.startTime.clone();
+  clock.clockRange = Cesium.ClockRange.CLAMPED;
+  clock.multiplier = defaultMult;
+  clock.shouldAnimate = false;
+
+  /* glider position over time */
+  posProp = new Cesium.SampledPositionProperty();
+  posProp.setInterpolationOptions({
+    interpolationDegree: 1,
+    interpolationAlgorithm: Cesium.LinearApproximation
+  });
+  for (const p of pts) {
+    posProp.addSample(
+      Cesium.JulianDate.addSeconds(clock.startTime, p.t, new Cesium.JulianDate()),
+      Cesium.Cartesian3.fromDegrees(p.lon, p.lat, p.alt)
+    );
+  }
+
+  /* track polyline, colored by altitude */
+  const positions = [], colors = [];
+  for (const p of pts) {
+    positions.push(Cesium.Cartesian3.fromDegrees(p.lon, p.lat, p.alt));
+    const [r, g, b] = rampColor(p.alt);
+    colors.push(Cesium.Color.fromBytes(r, g, b, 235));
+  }
+  viewer.scene.primitives.add(new Cesium.Primitive({
+    geometryInstances: new Cesium.GeometryInstance({
+      geometry: new Cesium.PolylineGeometry({
+        positions, colors, colorsPerVertex: true, width: 3.5,
+        vertexFormat: Cesium.PolylineColorAppearance.VERTEX_FORMAT
+      })
+    }),
+    appearance: new Cesium.PolylineColorAppearance({ translucent: false }),  // opaque → writes depth
+    asynchronous: false
+  }));
+
+  /* faint ground shadow of the track, draped on terrain */
+  viewer.entities.add({
+    polyline: {
+      positions: pts.filter((_, i) => i % 5 === 0)
+                    .map(p => Cesium.Cartesian3.fromDegrees(p.lon, p.lat)),
+      clampToGround: true, width: 2,
+      material: Cesium.Color.BLACK.withAlpha(0.28)
+    }
+  });
+
+  /* periodic tether lines anchoring the track to the ground, for depth cues */
+  const TETHER_STRIDE = Math.max(1, Math.round(pts.length / 42));
+  for (let i = 0; i < pts.length; i += TETHER_STRIDE) {
+    const p = pts[i];
+    viewer.entities.add({
+      polyline: {
+        positions: [
+          Cesium.Cartesian3.fromDegrees(p.lon, p.lat, p.alt),
+          Cesium.Cartesian3.fromDegrees(p.lon, p.lat, groundHeightAt(i))
+        ],
+        width: 1, material: Cesium.Color.WHITE.withAlpha(0.18)
+      }
+    });
+  }
+
+  /* the glider */
+  const glider = viewer.entities.add({
+    availability: new Cesium.TimeIntervalCollection([
+      new Cesium.TimeInterval({ start: clock.startTime, stop: clock.stopTime })
+    ]),
+    position: posProp,
+    point: {
+      pixelSize: 11, color: Cesium.Color.fromCssColorString("#ffb454"),
+      outlineColor: Cesium.Color.fromCssColorString("#14100a"), outlineWidth: 2.5
+    }
+  });
+
+  /* photo markers: a magnifying-glass pin per spot (single thumbnail, or a
+     stacked "multiphoto" marker with a count). Depth-tested against terrain and
+     each other, so a nearer pin correctly occludes a farther one and pins behind
+     a ridge are hidden. Icons are pre-rendered to canvases up front. */
+  const groupIcons = await Promise.all(groups.map(g =>
+    g.members.length > 1
+      ? stackThumb(PHOTOS[g.members[0]].thumb, g.members.length)
+      : circleThumb(PHOTOS[g.members[0]].thumb)));
+  groups.forEach((g, gi) => {
+    const px = g.members.length > 1 ? 58 : 46;
+    const times = g.members.map(mi => PHOTOS[mi].t);   // swell near ANY member's time
+    const ent = viewer.entities.add({
+      position: Cesium.Cartesian3.fromDegrees(g.lon, g.lat, g.alt),
+      point: {                                          // the trackpoint, below the pin
+        pixelSize: 7, color: Cesium.Color.fromCssColorString("#ffb454"),
+        outlineColor: Cesium.Color.fromCssColorString("#14100a"), outlineWidth: 2,
+        // nudge toward the camera so it doesn't z-fight the track line it sits on
+        eyeOffset: new Cesium.Cartesian3(0, 0, -30)
+      },
+      billboard: {
+        image: groupIcons[gi] || PHOTOS[g.members[0]].thumb,
+        width: px, height: Math.round(px * MARKER_ASPECT),
+        verticalOrigin: Cesium.VerticalOrigin.BOTTOM,   // pin sits ABOVE the trackpoint
+        horizontalOrigin: Cesium.HorizontalOrigin.CENTER,
+        // depth-tested (not forced on top), so overlapping thumbnails sort by
+        // distance — a nearer pin occludes a farther one — and pins behind a
+        // ridge are hidden. eyeOffset keeps the base off the track line.
+        eyeOffset: new Cesium.Cartesian3(0, 0, -30),
+        scale: new Cesium.CallbackProperty(() => {
+          if (reducedMotion) return 1;
+          const t = Cesium.JulianDate.secondsDifference(clock.currentTime, clock.startTime);
+          // distance to the closest photo in the group, so the marker stays
+          // swelled while viewing any of its members (not just the first)
+          const d = Math.min(...times.map(tm => Math.abs(t - tm)));
+          return 1 + 0.35 * Math.max(0, 1 - d / 14);   // swell as playback passes by
+        }, false)
+      }
+    });
+    ent.__photoIndex = g.members[0];   // click opens the group's first photo
+  });
+
+  /* picking: open lightbox on dot click, pointer cursor on hover */
+  const handler = new Cesium.ScreenSpaceEventHandler(viewer.scene.canvas);
+  handler.setInputAction(m => {
+    const picked = viewer.scene.pick(m.position);
+    const idx = picked && picked.id && picked.id.__photoIndex;
+    if (idx !== undefined) openLightbox(idx);
+  }, Cesium.ScreenSpaceEventType.LEFT_CLICK);
+  handler.setInputAction(m => {
+    const picked = viewer.scene.pick(m.endPosition);
+    viewer.scene.canvas.style.cursor =
+      picked && picked.id && picked.id.__photoIndex !== undefined ? "pointer" : "default";
+  }, Cesium.ScreenSpaceEventType.MOUSE_MOVE);
+
+  /* initial framing — follow is the default: a mostly-overhead, north-up view
+     zoomed to show ~2/3 of the track. In free mode, frame the whole track.
+     (Done while the gate is still up, so there's no visible snap.) */
+  const sphere = Cesium.BoundingSphere.fromPoints(positions);
+  trackRadius = sphere.radius;
+  if (cameraMode === "follow") {
+    frameFollow();
+  } else {
+    viewer.camera.flyToBoundingSphere(sphere, {
+      duration: 2.2,
+      offset: new Cesium.HeadingPitchRange(
+        Cesium.Math.toRadians(-30), Cesium.Math.toRadians(-24), sphere.radius * 3.1)
+    });
+  }
+
+  clock.onTick.addEventListener(onTick);
+  drawProfile(0);
+
+  /* hide the gate once the globe has something to show */
+  viewer.scene.globe.tileLoadProgressEvent.addEventListener(function onceLoaded(n) {
+    if (n === 0) {
+      viewer.scene.globe.tileLoadProgressEvent.removeEventListener(onceLoaded);
+      $("gate").style.display = "none";
+    }
+  });
+  setTimeout(() => { $("gate").style.display = "none"; }, 9000); // fail-safe
+}
+
+/* ================ PLAYBACK UI ================ */
+function nowSeconds() {
+  return Cesium.JulianDate.secondsDifference(clock.currentTime, clock.startTime);
+}
+
+/* spin the compass rose so its red arrow points to true north on screen */
+function updateCompass() {
+  if (!viewer) return;
+  const h = Cesium.Math.toDegrees(viewer.camera.heading);
+  $("compassRose").style.transform = `rotate(${-h}deg)`;
+}
+
+function onTick() {
+  const t = nowSeconds();
+  const here = interpAt(t);
+  const before = interpAt(Math.max(0, t - 2)), after = interpAt(Math.min(TOTAL, t + 2));
+  const dt = after.t - before.t || 1;
+
+  const gs = haversine(before, after) / dt * 3.6;
+  const vario = (after.alt - before.alt) / dt;
+
+  $("alt").textContent = Math.round(here.alt) + " m";
+  $("spd").textContent = Math.round(gs) + " km/h";
+  const v = $("vario");
+  v.textContent = (vario >= 0 ? "+" : "") + vario.toFixed(1) + " m/s";
+  v.className = vario > 0.2 ? "up" : vario < -0.2 ? "down" : "";
+
+  $("tUTC").textContent = fmtUTC(t);
+  $("tElapsed").textContent = fmtElapsed(t);
+
+  if (t >= TOTAL - 0.5 && clock.shouldAnimate) setPlaying(false);
+
+  if (cameraMode === "follow") followCamera();
+  drawProfile(t);
+  updateCompass();
+
+  /* close the photo panel once the flight is scrubbed/played away from it —
+     but not during a photo-to-photo transition, which sweeps t on purpose */
+  if (!scrubAnim && $("lightbox").classList.contains("open")) {
+    const ph = PHOTOS[lbIndex];
+    if (ph && Math.abs(t - ph.tPos) > 15) closeLightbox();
+  }
+}
+
+/* ---- follow camera ----
+   Zoomed-out chase cam anchored to an orbit center that RUBBER-BANDS toward the
+   glider: it trails during motion (the glider leads toward the edge) and eases
+   back to center as the glider slows, stops, or is scrubbed to a new spot — the
+   same elastic feel whether playing or dragging the scrubber. The center lives
+   in the glider's local East-North-Up frame, so mouse drags orbit around that
+   trackpoint and the wheel zooms toward it; the frame is ground-aligned, so the
+   view never rotates on its own. The ease is measured in real wall-clock time,
+   so it's independent of playback speed / how fast tracklog time is moving. */
+const FOLLOW_RANGE = 8000;                          // fallback chase distance (m) if track extent unknown
+const FOLLOW_PITCH = -78 * RAD;                     // mostly overhead (Cesium isn't loaded yet at parse time)
+const FOLLOW_TAU = 0.7;                             // rubber-band time constant, in real seconds
+let followCenter = null;                            // orbit center the camera trails
+let followLastMs = 0;
+let trackRadius = 0;                                // bounding-sphere radius of the whole track (m)
+
+/* distance that frames ~2/3 of the track's extent for the default overhead view */
+function followViewRange() {
+  if (!trackRadius) return FOLLOW_RANGE;
+  const fovy = (viewer.camera.frustum && viewer.camera.frustum.fovy) || 0.6;
+  return (2 / 3) * trackRadius / Math.tan(fovy / 2);
+}
+
+function frameFollow() {
+  if (!posProp || !viewer) return;
+  const p = posProp.getValue(clock.currentTime);
+  if (!p) return;
+  followCenter = Cesium.Cartesian3.clone(p, followCenter || new Cesium.Cartesian3());
+  followLastMs = performance.now();
+  const transform = Cesium.Transforms.eastNorthUpToFixedFrame(followCenter);
+  // default pose: north up (heading 0), mostly overhead, ~2/3 of the track in view
+  viewer.camera.lookAtTransform(transform, new Cesium.HeadingPitchRange(
+    0, FOLLOW_PITCH, followViewRange()));
+}
+
+function followCamera() {
+  const p = posProp.getValue(clock.currentTime);
+  if (!p) return;
+  if (!followCenter) { frameFollow(); return; }
+  // exponential ease toward the glider, using elapsed REAL time so the rubber
+  // band is the same whether playing fast, slow, or scrubbing by hand
+  const now = performance.now();
+  let dt = (now - followLastMs) / 1000;
+  followLastMs = now;
+  if (!(dt > 0)) dt = 0.016;
+  dt = Math.min(dt, 0.1);
+  const k = 1 - Math.exp(-dt / FOLLOW_TAU);
+  Cesium.Cartesian3.lerp(followCenter, p, k, followCenter);
+  // carry the user's current orbit offset onto the re-centered frame, so the
+  // camera follows the glider while any manual orbit/zoom is preserved
+  const offset = Cesium.Cartesian3.clone(viewer.camera.position, new Cesium.Cartesian3());
+  const transform = Cesium.Transforms.eastNorthUpToFixedFrame(followCenter);
+  viewer.camera.lookAtTransform(transform, offset);
+  applyPanOffset();   // when the photo panel is open, keep the subject in the free area
+}
+
+function setPlaying(on) {
+  if (on) cancelScrub();   // starting playback overrides any photo-transition sweep
+  if (on && nowSeconds() >= TOTAL - 0.5) clock.currentTime = clock.startTime.clone();
+  clock.shouldAnimate = on;
+  $("icoPlay").style.display = on ? "none" : "";
+  $("icoPause").style.display = on ? "" : "none";
+  $("btnPlay").setAttribute("aria-label", on ? "Pause" : "Play flight");
+}
+
+$("btnPlay").addEventListener("click", () => setPlaying(!clock.shouldAnimate));
+
+/* ---- playback speed presets ----
+   The fastest preset replays the whole track in ~FAST_PLAYBACK_SEC seconds (but
+   never faster than MAX_MULT), and the others scale down from there (½× and ⅕×
+   the top speed, plus 1×). Multipliers are rounded to readable values, so the
+   fastest lands close to — not exactly on — the target time. */
+const FAST_PLAYBACK_SEC = 10;      // fastest preset plays the whole flight in ~this many real seconds
+const MAX_MULT = 400;              // …but never exceed this multiplier
+const DEFAULT_PLAYBACK_SEC = 60;   // default preset: whichever plays nearest this many real seconds
+
+function niceMult(v) {             // round to a readable value (2 significant figures)
+  if (v <= 1) return 1;
+  if (v < 10) return Math.round(v);
+  const m = Math.pow(10, Math.floor(Math.log10(v)) - 1);
+  return Math.round(v / m) * m;
+}
+
+function buildSpeedControls() {
+  const maxMult = Math.min(MAX_MULT, niceMult(Math.max(2, TOTAL / FAST_PLAYBACK_SEC)));   // ~10 s, capped
+  let speeds = [1, maxMult / 5, maxMult / 2, maxMult].map(niceMult);
+  speeds = [...new Set(speeds)].filter(v => v >= 1).sort((a, b) => a - b);
+  if (speeds.length < 2) speeds = [1, maxMult];
+  // default: the preset that plays the flight closest to DEFAULT_PLAYBACK_SEC
+  defaultMult = speeds.reduce((best, v) =>
+    Math.abs(TOTAL / v - DEFAULT_PLAYBACK_SEC) < Math.abs(TOTAL / best - DEFAULT_PLAYBACK_SEC) ? v : best,
+    speeds[0]);
+  const seg = $("speedSeg");
+  seg.innerHTML = "";
+  for (const v of speeds) {
+    const btn = document.createElement("button");
+    btn.dataset.mult = v;
+    btn.textContent = v + "×";
+    btn.setAttribute("aria-pressed", v === defaultMult ? "true" : "false");
+    seg.appendChild(btn);
+  }
+}
+
+$("speedSeg").addEventListener("click", e => {
+  const b = e.target.closest("button"); if (!b) return;
+  clock.multiplier = Number(b.dataset.mult);
+  for (const x of $("speedSeg").children) x.setAttribute("aria-pressed", x === b);
+});
+
+$("camSeg").addEventListener("click", e => {
+  const b = e.target.closest("button"); if (!b) return;
+  cameraMode = b.dataset.cam;
+  for (const x of $("camSeg").children) x.setAttribute("aria-pressed", x === b);
+  if (cameraMode === "free") {
+    viewer.camera.lookAtTransform(Cesium.Matrix4.IDENTITY);   // back to globe pan/zoom
+    followCenter = null;
+  } else {
+    frameFollow();   // re-establish the zoomed-out orbit pose
+  }
+});
+
+/* ================ PROFILE STRIP ================ */
+const canvas = $("profile"), ctx = canvas.getContext("2d");
+let cw = 0, ch = 0;
+
+function resizeProfile() {
+  const r = canvas.getBoundingClientRect(), dpr = window.devicePixelRatio || 1;
+  cw = r.width; ch = r.height;
+  canvas.width = Math.round(cw * dpr); canvas.height = Math.round(ch * dpr);
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+}
+new ResizeObserver(() => { resizeProfile(); drawProfile(clock ? nowSeconds() : 0); }).observe(canvas);
+resizeProfile();
+
+const X = t => (t / TOTAL) * cw;
+const Y = a => ch - 7 - ((a - (minAlt - 80)) / ((maxAlt + 140) - (minAlt - 80))) * (ch - 15);
+
+function drawProfile(t) {
+  if (!cw || !pts.length) return;
+  ctx.clearRect(0, 0, cw, ch);
+
+  /* altitude area */
+  ctx.beginPath();
+  ctx.moveTo(0, Y(pts[0].alt));
+  const step = Math.max(1, Math.floor(pts.length / cw));
+  for (let i = 0; i < pts.length; i += step) ctx.lineTo(X(pts[i].t), Y(pts[i].alt));
+  ctx.lineTo(X(TOTAL), Y(pts[pts.length - 1].alt));
+  ctx.strokeStyle = "rgba(111,183,255,0.95)"; ctx.lineWidth = 1.6; ctx.stroke();
+  ctx.lineTo(cw, ch); ctx.lineTo(0, ch); ctx.closePath();
+  ctx.fillStyle = "rgba(111,183,255,0.14)"; ctx.fill();
+
+  /* photo markers */
+  for (const ph of PHOTOS) {
+    const x = X(ph.tPos), y = Y(ph.alt);
+    ctx.beginPath(); ctx.arc(x, y, 4.4, 0, 7);
+    ctx.fillStyle = "#ffb454"; ctx.fill();
+    ctx.lineWidth = 1.6; ctx.strokeStyle = "#0e141b"; ctx.stroke();
+  }
+
+  /* playhead */
+  const x = X(t);
+  ctx.beginPath(); ctx.moveTo(x, 2); ctx.lineTo(x, ch - 2);
+  ctx.strokeStyle = "rgba(255,180,84,0.9)"; ctx.lineWidth = 1.5; ctx.stroke();
+  ctx.beginPath(); ctx.arc(x, Y(interpAt(t).alt), 4.6, 0, 7);
+  ctx.fillStyle = "#ffb454"; ctx.fill();
+  ctx.lineWidth = 2; ctx.strokeStyle = "#14100a"; ctx.stroke();
+}
+
+/* scrub the timeline (photos are opened from their 3D markers, not here) */
+let scrubbing = false;
+function eventT(e) {
+  const r = canvas.getBoundingClientRect();
+  return Math.min(TOTAL, Math.max(0, ((e.clientX - r.left) / r.width) * TOTAL));
+}
+canvas.addEventListener("pointerdown", e => {
+  scrubbing = true; canvas.setPointerCapture(e.pointerId);
+  cancelScrub();   // a manual drag overrides any photo-transition sweep
+  e.preventDefault();
+  seek(eventT(e));
+});
+canvas.addEventListener("pointermove", e => { if (scrubbing) { e.preventDefault(); seek(eventT(e)); } });
+canvas.addEventListener("pointerup", e => { scrubbing = false; canvas.releasePointerCapture(e.pointerId); });
+canvas.addEventListener("pointercancel", () => { scrubbing = false; });
+function seek(t) {
+  if (!clock) return;
+  clock.currentTime = Cesium.JulianDate.addSeconds(clock.startTime, t, new Cesium.JulianDate());
+  if (!clock.shouldAnimate) { onTick(); viewer.scene.requestRender && viewer.scene.requestRender(); }
+}
+
+/* animated scrub: sweep the clock from the current time to targetT with an
+   ease-in-out (accelerate in and out) so moving between photos glides the
+   playhead / glider / camera between them instead of hard-cutting. The gap is
+   covered quickly regardless of how far apart the two fixes are. */
+let scrubRAF = 0, scrubAnim = false;
+function cancelScrub() { if (scrubRAF) cancelAnimationFrame(scrubRAF); scrubRAF = 0; scrubAnim = false; }
+function scrubTo(targetT) {
+  if (!clock) return;
+  cancelScrub();
+  const startT = nowSeconds(), delta = targetT - startT;
+  if (reducedMotion || Math.abs(delta) < 0.5) { seek(targetT); return; }
+  const dur = Math.min(1200, 420 + Math.abs(delta) / TOTAL * 900);   // ms: quick, scales gently
+  const t0 = performance.now();
+  scrubAnim = true;
+  const step = now => {
+    const p = Math.min(1, (now - t0) / dur);
+    const e = p < 0.5 ? 2 * p * p : 1 - Math.pow(-2 * p + 2, 2) / 2;  // ease-in-out quad
+    clock.currentTime = Cesium.JulianDate.addSeconds(
+      clock.startTime, startT + delta * e, new Cesium.JulianDate());
+    onTick();
+    if (viewer.scene.requestRender) viewer.scene.requestRender();
+    if (p < 1) { scrubRAF = requestAnimationFrame(step); }
+    else { scrubRAF = 0; scrubAnim = false; }
+  };
+  scrubRAF = requestAnimationFrame(step);
+}
+
+/* ================ LIGHTBOX ================ */
+/* When the photo panel is open it covers part of the window; rather than
+   centering the followed point behind the panel, pan the camera so the subject
+   sits in the free area — to the left of a side panel, or above/below a sheet.
+   It's a real camera rotation, re-applied each frame in follow mode (where
+   lookAtTransform re-centers first, so it never compounds). */
+function applyPanOffset() {
+  if (!viewer || !$("lightbox").classList.contains("open")) return;
+  const cw = viewer.scene.canvas.clientWidth, ch = viewer.scene.canvas.clientHeight;
+  if (!cw || !ch) return;
+  const fr = viewer.scene.camera.frustum;
+  if (typeof fr.fov !== "number") return;            // only the 3D perspective frustum
+  const r = $("lightbox").getBoundingClientRect();
+  const aspect = cw / ch;
+  if (r.right - r.left >= cw - 40) {
+    // full-width sheet: pan vertically so the subject is in the taller free strip
+    const fovy = aspect >= 1 ? 2 * Math.atan(Math.tan(fr.fov / 2) / aspect) : fr.fov;
+    const fy = (r.top <= 40 ? (r.bottom + ch) / 2 : r.top / 2) / ch;   // desired fraction from top
+    viewer.camera.lookUp(Math.atan((2 * fy - 1) * Math.tan(fovy / 2)));
+  } else {
+    // side panel: pan the view sideways so the subject lands in the free strip
+    const fovx = aspect >= 1 ? fr.fov : 2 * Math.atan(Math.tan(fr.fov / 2) * aspect);
+    const f = (r.left > cw - r.right ? r.left / 2 : (r.right + cw) / 2) / cw;  // desired fraction from left
+    viewer.camera.lookRight(Math.atan((1 - 2 * f) * Math.tan(fovx / 2)));
+  }
+}
+
+let lbIndex = 0;
+function openLightbox(i) {
+  lbIndex = (i + PHOTOS.length) % PHOTOS.length;
+  const ph = PHOTOS[lbIndex];
+  $("lbImg").src = ph.img;
+  $("lbImg").alt = ph.caption;
+  $("lbCaption").textContent = ph.caption;
+  $("lbTime").textContent = fmtUTC(ph.t);
+  $("lbAlt").textContent = Math.round(ph.alt) + " m";
+  $("lbCount").textContent = `${lbIndex + 1} of ${PHOTOS.length}`;
+
+  /* group browser: if this photo shares a spot with others, show a strip of the
+     co-located thumbnails and a "N here" chip; otherwise hide them */
+  const grp = ph.group;
+  const strip = $("lbStrip"), spot = $("lbSpot");
+  if (grp && grp.members.length > 1) {
+    strip.innerHTML = "";
+    for (const mi of grp.members) {
+      const p = PHOTOS[mi];
+      const btn = document.createElement("button");
+      btn.className = "lb-thumb" + (mi === lbIndex ? " active" : "");
+      btn.style.backgroundImage = `url("${p.thumb}")`;
+      btn.title = p.caption;
+      btn.setAttribute("aria-label", p.caption);
+      btn.addEventListener("click", () => openLightbox(mi));
+      strip.appendChild(btn);
+    }
+    strip.style.display = "flex";
+    spot.textContent = `◉ ${grp.members.indexOf(lbIndex) + 1} of ${grp.members.length} here`;
+    spot.style.display = "";
+  } else {
+    strip.style.display = "none";
+    spot.style.display = "none";
+  }
+
+  $("lightbox").classList.add("open");
+  setPlaying(false);
+
+  /* sweep the flight to where this photo was taken — playhead, glider marker
+     and telemetry glide to that fix as you move through the photos. In follow
+     mode these ticks also pan the view into the free area (applyPanOffset). */
+  scrubTo(ph.tPos);
+
+  /* in free-orbit mode, fly the globe to the photo location, then pan it into
+     the area the panel leaves free */
+  if (viewer && cameraMode === "free") {
+    const pos = Cesium.Cartesian3.fromDegrees(ph.lon, ph.lat, ph.alt);
+    viewer.camera.flyToBoundingSphere(new Cesium.BoundingSphere(pos, 500), {
+      duration: 1.1,
+      offset: new Cesium.HeadingPitchRange(
+        Cesium.Math.toRadians(-35), Cesium.Math.toRadians(-22), 2400),
+      complete: applyPanOffset
+    });
+  }
+}
+function closeLightbox() { $("lightbox").classList.remove("open"); }
+$("lbClose").addEventListener("click", closeLightbox);
+$("lbPrev").addEventListener("click", () => openLightbox(lbIndex - 1));
+$("lbNext").addEventListener("click", () => openLightbox(lbIndex + 1));
+document.addEventListener("keydown", e => {
+  if (!$("lightbox").classList.contains("open")) return;
+  if (e.key === "Escape") closeLightbox();
+  if (e.key === "ArrowLeft") openLightbox(lbIndex - 1);
+  if (e.key === "ArrowRight") openLightbox(lbIndex + 1);
+});
+
+/* ================ TOKEN GATE ================ */
+function gateFail(msg) {
+  $("gateLoading").style.display = "none";
+  $("gateForm").style.display = "block";
+  const e = $("gateErr");
+  e.textContent = msg;
+  e.style.display = "block";
+}
+async function tryStart(token) {
+  token = (token || "").trim();
+  if (token.length < 20) {
+    gateFail("That doesn't look like a token. Paste the full string from ion.cesium.com.");
+    return;
+  }
+  $("gateForm").style.display = "none";
+  $("gateLoading").style.display = "block";
+  try {
+    await window.__cesiumReady;
+  } catch (err) {
+    gateFail("Couldn't load the CesiumJS library from its CDN. Check your internet connection or content blocker, then try again.");
+    return;
+  }
+  try {
+    await initCesium(token);
+  } catch (err) {
+    gateFail("Cesium failed to start: " + err.message);
+  }
+}
+$("btnGo").addEventListener("click", () => tryStart($("tokenInput").value));
+$("tokenInput").addEventListener("keydown", e => { if (e.key === "Enter") tryStart($("tokenInput").value); });
+
+tryStart(ION_TOKEN);
+</script>
+</body>
+</html>
