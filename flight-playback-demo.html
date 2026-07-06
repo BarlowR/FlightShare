@@ -52,6 +52,15 @@ window.__cesiumReady = new Promise((resolve, reject) => {
     --radius: 14px;
     --font-ui: "Space Grotesk", system-ui, sans-serif;
     --font-data: "IBM Plex Mono", ui-monospace, monospace;
+
+    /* ---- flight-visualization colors (edit here; also read by the JS) ---- */
+    --track-low:   #2dd4ff;   /* track polyline at ground level */
+    --track-high:  #ff3d9a;   /* track polyline at the flight's max altitude */
+    --marker:      #ffb454;   /* photo pins, glider dot, trackpoint dots */
+    --marker-ink:  #14100a;   /* dark outline / text on markers */
+    --card-back:   #141b25;   /* card peeking behind stacked photos */
+    --compass-n:   #ff3d6b;   /* compass north arrow */
+    --compass-s:   #5b6b7a;   /* compass south arrow */
   }
   * { box-sizing: border-box; }
   html, body { margin: 0; height: 100%; overflow: hidden; background: #05080c; }
@@ -240,8 +249,8 @@ window.__cesiumReady = new Promise((resolve, reject) => {
   .compass svg { width: 100%; height: 100%; display: block; }
   .compass-ring { fill: var(--panel); stroke: var(--line); stroke-width: 1; }
   .compass-view { fill: var(--accent); }                 /* fixed notch = view direction (screen up) */
-  .compass-north { fill: #ff3d6b; }
-  .compass-south { fill: #5b6b7a; }
+  .compass-north { fill: var(--compass-n); }
+  .compass-south { fill: var(--compass-s); }
   #compassRose { transform-box: fill-box; transform-origin: center; }
 </style>
 </head>
@@ -372,6 +381,20 @@ window.__cesiumReady = new Promise((resolve, reject) => {
 
 /* ================= CONFIG ================= */
 const ION_TOKEN = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJqdGkiOiI0ZGMyZmRkYS05ODIxLTRiMzItYmExZi1iN2ZlODY3MmI5MTciLCJpZCI6NDUyNDkxLCJzdWIiOiJtZXJsaW4tcm9iIiwiaXNzIjoiaHR0cHM6Ly9hcGkuY2VzaXVtLmNvbSIsImF1ZCI6IkRlbW8iLCJpYXQiOjE3ODMxODczMjh9.8RoknkKReRusoei_OpjsaA-nMQyrc0vcJgGmFNrSOYc"; // ← paste your Cesium ion token here to skip the startup prompt
+
+/* ================= COLORS =================
+   All flight-visualization colors live in the CSS :root block above (so both
+   the CSS and this JS read from one place). Edit them there; C mirrors them for
+   the canvas/Cesium code. */
+const cssVar = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+const hexRgb = h => { const n = parseInt(h.replace("#", ""), 16); return [(n >> 16) & 255, (n >> 8) & 255, n & 255]; };
+const C = {
+  marker:    cssVar("--marker"),
+  markerInk: cssVar("--marker-ink"),
+  cardBack:  cssVar("--card-back"),
+  trackLow:  hexRgb(cssVar("--track-low")),
+  trackHigh: hexRgb(cssVar("--track-high"))
+};
 
 /* =============== FLIGHT DATA ===============
    Real flight bundle: a parsed IGC track + timestamped photos, loaded at
@@ -521,8 +544,8 @@ function drawStem(g, size, H, topY) {
   g.lineTo(cx + halfW, topY);
   g.lineTo(cx, tipY);
   g.closePath();
-  g.fillStyle = "#ffb454"; g.fill();
-  g.lineWidth = size * 0.03; g.strokeStyle = "#14100a"; g.stroke();
+  g.fillStyle = C.marker; g.fill();
+  g.lineWidth = size * 0.03; g.strokeStyle = C.markerInk; g.stroke();
 }
 
 /* single photo: circle-cropped thumbnail lens with an amber ring, on a stem.
@@ -544,7 +567,7 @@ function circleThumb(url, size = 128, ring = 8) {
       g.drawImage(img, r - w / 2, r - h / 2, w, h);
       g.restore();
       g.beginPath(); g.arc(r, r, r - ring / 2, 0, 7);
-      g.lineWidth = ring; g.strokeStyle = "#ffb454"; g.stroke();
+      g.lineWidth = ring; g.strokeStyle = C.marker; g.stroke();
       resolve(c);
     };
     img.onerror = () => resolve(null);
@@ -568,8 +591,8 @@ function stackThumb(url, count, size = 128, ring = 8) {
       drawStem(g, size, H, front.y + R - ring);        // tail from the front lens bottom
       // back card peeking behind the top photo
       g.beginPath(); g.arc(back.x, back.y, R, 0, 7);
-      g.fillStyle = "#141b25"; g.fill();
-      g.lineWidth = ring; g.strokeStyle = "#ffb454"; g.stroke();
+      g.fillStyle = C.cardBack; g.fill();
+      g.lineWidth = ring; g.strokeStyle = C.marker; g.stroke();
       // top photo, circle-cropped
       g.save();
       g.beginPath(); g.arc(front.x, front.y, R - ring / 2, 0, 7); g.clip();
@@ -578,13 +601,13 @@ function stackThumb(url, count, size = 128, ring = 8) {
       g.drawImage(img, front.x - w / 2, front.y - h / 2, w, h);
       g.restore();
       g.beginPath(); g.arc(front.x, front.y, R - ring / 2, 0, 7);
-      g.lineWidth = ring; g.strokeStyle = "#ffb454"; g.stroke();
+      g.lineWidth = ring; g.strokeStyle = C.marker; g.stroke();
       // count badge
       const bx = size * 0.74, by = size * 0.68, br = size * 0.17;
       g.beginPath(); g.arc(bx, by, br, 0, 7);
-      g.fillStyle = "#ffb454"; g.fill();
-      g.lineWidth = 4; g.strokeStyle = "#14100a"; g.stroke();
-      g.fillStyle = "#14100a"; g.textAlign = "center"; g.textBaseline = "middle";
+      g.fillStyle = C.marker; g.fill();
+      g.lineWidth = 4; g.strokeStyle = C.markerInk; g.stroke();
+      g.fillStyle = C.markerInk; g.textAlign = "center"; g.textBaseline = "middle";
       g.font = `bold ${Math.round(br * 1.25)}px "IBM Plex Mono", ui-monospace, monospace`;
       g.fillText(String(count), bx, by + 1);
       resolve(c);
@@ -623,12 +646,10 @@ $("descToggle").addEventListener("click", () => {
 });
 
 /* track color ramp, scaled to the flight's max height (0 → maxAlt): low cyan
-   #2dd4ff → high magenta #ff3d9a. Both ends pop against green and brown terrain,
-   unlike the old amber which blended into brown. */
+  C.trackLow → C.trackHigh. */
 function rampColor(alt) {
   const f = Math.min(1, Math.max(0, alt / maxAlt));
-  const lo = [45, 212, 255], hi = [255, 61, 154];
-  return lo.map((c, i) => Math.round(c + (hi[i] - c) * f));
+  return C.trackLow.map((c, i) => Math.round(c + (C.trackHigh[i] - c) * f));
 }
 
 /* headline stats + flight card are populated by loadBundle() once fetched */
@@ -793,8 +814,8 @@ async function initCesium(token) {
     ]),
     position: posProp,
     point: {
-      pixelSize: 11, color: Cesium.Color.fromCssColorString("#ffb454"),
-      outlineColor: Cesium.Color.fromCssColorString("#14100a"), outlineWidth: 2.5
+      pixelSize: 11, color: Cesium.Color.fromCssColorString(C.marker),
+      outlineColor: Cesium.Color.fromCssColorString(C.markerInk), outlineWidth: 2.5
     }
   });
 
@@ -812,8 +833,8 @@ async function initCesium(token) {
     const ent = viewer.entities.add({
       position: Cesium.Cartesian3.fromDegrees(g.lon, g.lat, g.alt),
       point: {                                          // the trackpoint, below the pin
-        pixelSize: 7, color: Cesium.Color.fromCssColorString("#ffb454"),
-        outlineColor: Cesium.Color.fromCssColorString("#14100a"), outlineWidth: 2,
+        pixelSize: 7, color: Cesium.Color.fromCssColorString(C.marker),
+        outlineColor: Cesium.Color.fromCssColorString(C.markerInk), outlineWidth: 2,
         // nudge toward the camera so it doesn't z-fight the track line it sits on
         eyeOffset: new Cesium.Cartesian3(0, 0, -30)
       },
@@ -1079,7 +1100,7 @@ function drawProfile(t) {
   for (const ph of PHOTOS) {
     const x = X(ph.tPos), y = Y(ph.alt);
     ctx.beginPath(); ctx.arc(x, y, 4.4, 0, 7);
-    ctx.fillStyle = "#ffb454"; ctx.fill();
+    ctx.fillStyle = C.marker; ctx.fill();
     ctx.lineWidth = 1.6; ctx.strokeStyle = "#0e141b"; ctx.stroke();
   }
 
@@ -1088,8 +1109,8 @@ function drawProfile(t) {
   ctx.beginPath(); ctx.moveTo(x, 2); ctx.lineTo(x, ch - 2);
   ctx.strokeStyle = "rgba(255,180,84,0.9)"; ctx.lineWidth = 1.5; ctx.stroke();
   ctx.beginPath(); ctx.arc(x, Y(interpAt(t).alt), 4.6, 0, 7);
-  ctx.fillStyle = "#ffb454"; ctx.fill();
-  ctx.lineWidth = 2; ctx.strokeStyle = "#14100a"; ctx.stroke();
+  ctx.fillStyle = C.marker; ctx.fill();
+  ctx.lineWidth = 2; ctx.strokeStyle = C.markerInk; ctx.stroke();
 }
 
 /* scrub the timeline (photos are opened from their 3D markers, not here) */
