@@ -4,7 +4,7 @@
     - [x] Photos don't switch fast (cache photos?)
     - [x] Group loses selection when second image is picked
 
-- [ ] Hardcode the Ion key properly 
+- [x] Hardcode the Ion key properly 
 
 - [x] When moving between photos, quickly scrub the timeline between the two instead of just jumping. Accelerate in and out. 
 
@@ -26,7 +26,7 @@
 
 # Big Chunks
 
-- [ ] Optimize for web display
+- [X] Optimize for web display
 
 - [x] Refactor with proper structure across multiple files
 
