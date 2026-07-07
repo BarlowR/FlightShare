@@ -1,0 +1,118 @@
+---
+import "../styles/global.css";
+import fs from "node:fs";
+import path from "node:path";
+
+/**
+ * Flight gallery. Auto-discovers every bundle under public/flights/<slug>/flight.json
+ * at build time and renders a card per flight linking to the viewer. Drop another
+ * bundle folder in and it shows up here — no code change.
+ */
+type Card = {
+  slug: string; title: string; date: string;
+  pilot?: string; glider?: string; site?: string;
+  durationMin: number; maxAlt: number; photos: number; thumb: string | null;
+};
+
+const FLIGHTS_DIR = path.resolve("public/flights");
+let flights: Card[] = [];
+try {
+  for (const slug of fs.readdirSync(FLIGHTS_DIR)) {
+    const jsonPath = path.join(FLIGHTS_DIR, slug, "flight.json");
+    if (!fs.existsSync(jsonPath)) continue;
+    const b = JSON.parse(fs.readFileSync(jsonPath, "utf8"));
+    const pts: number[][] = b.track?.points ?? [];
+    const last = pts.length ? pts[pts.length - 1][0] : 0;
+    const maxAlt = pts.reduce((m, p) => Math.max(m, p[3]), 0);
+    const first = (b.media ?? [])[0];
+    flights.push({
+      slug,
+      title: b.title || slug,
+      date: b.date || "",
+      pilot: b.pilot, glider: b.glider, site: b.site,
+      durationMin: Math.round(last / 60),
+      maxAlt: Math.round(maxAlt),
+      photos: (b.media ?? []).length,
+      thumb: first ? `/flights/${slug}/${first.thumb || first.web}` : null,
+    });
+  }
+} catch { /* no flights dir yet */ }
+flights.sort((a, b) => a.title.localeCompare(b.title));
+
+const fmtDate = (d: string) =>
+  d ? new Date(d + "T00:00:00Z").toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric", timeZone: "UTC" }) : "";
+const fmtDur = (m: number) => (m >= 60 ? `${Math.floor(m / 60)}h ${m % 60}m` : `${m}m`);
+---
+
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Skylog — flights</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=IBM+Plex+Mono:wght@400;600&display=swap" rel="stylesheet" />
+<style is:global>
+  /* the viewer's global.css locks scrolling for the fullscreen globe; the
+     gallery scrolls normally */
+  html, body { overflow: auto !important; height: auto !important; min-height: 100%; }
+</style>
+<style>
+  .wrap { max-width: 1080px; margin: 0 auto; padding: 48px 24px 64px; }
+  header { margin-bottom: 28px; }
+  .eyebrow { font-family: var(--font-data); font-size: 11px; letter-spacing: 0.22em; color: var(--accent); text-transform: uppercase; margin: 0 0 8px; }
+  h1 { font-size: 30px; font-weight: 700; margin: 0 0 6px; letter-spacing: 0.01em; }
+  .sub { color: var(--muted); font-size: 14px; margin: 0; }
+
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 18px; margin-top: 28px; }
+  .card {
+    display: block; text-decoration: none; color: var(--ink);
+    background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius);
+    overflow: hidden; transition: border-color 0.15s, transform 0.15s;
+  }
+  .card:hover { border-color: var(--accent); transform: translateY(-2px); }
+  .thumb { height: 156px; background-color: #0c121a; background-size: cover; background-position: center; border-bottom: 1px solid var(--line); }
+  .card-body { padding: 14px 16px 16px; }
+  .card h2 { font-size: 17px; font-weight: 700; margin: 0 0 4px; }
+  .meta { font-size: 12.5px; color: var(--muted); margin: 0 0 12px; }
+  .chips { display: flex; gap: 6px; flex-wrap: wrap; }
+  .chip {
+    font-family: var(--font-data); font-size: 11px; color: var(--muted);
+    border: 1px solid var(--line); border-radius: 999px; padding: 3px 9px; background: var(--panel-soft);
+  }
+  .empty { color: var(--muted); font-size: 14px; border: 1px dashed var(--line); border-radius: var(--radius); padding: 28px; text-align: center; margin-top: 28px; }
+  .empty code { color: var(--accent); }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <p class="eyebrow">Skylog</p>
+    <h1>Flights</h1>
+    <p class="sub">Pick a flight to play back in 3D.</p>
+  </header>
+
+  {flights.length === 0 ? (
+    <div class="empty">No flights found. Add a bundle at <code>public/flights/&lt;slug&gt;/flight.json</code>.</div>
+  ) : (
+    <div class="grid">
+      {flights.map((f) => (
+        <a class="card" href={`/view?flight=${f.slug}`}>
+          <div class="thumb" style={f.thumb ? `background-image:url('${f.thumb}')` : ""}></div>
+          <div class="card-body">
+            <h2>{f.title}</h2>
+            <p class="meta">{[fmtDate(f.date), f.pilot, f.site].filter(Boolean).join(" · ")}</p>
+            <div class="chips">
+              <span class="chip">{fmtDur(f.durationMin)}</span>
+              <span class="chip">{f.maxAlt} m</span>
+              <span class="chip">{f.photos} photos</span>
+            </div>
+          </div>
+        </a>
+      ))}
+    </div>
+  )}
+</div>
+</body>
+</html>
