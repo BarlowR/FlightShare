@@ -22,13 +22,13 @@
 
 - [x] Remove the "Click an amber dot along the track to open the photo taken there. Drag the profile below to scrub." section
 
-- [ ] Move color definition somewhere I can easily fiddle with it
+- [x] Move color definition somewhere I can easily fiddle with it
 
 # Big Chunks
 
 - [ ] Optimize for web display
 
-- [ ] Create a feature description file and then refactor with proper structure across multiple files
+- [x] Refactor with proper structure across multiple files
 
 - [ ] Create a page to generate a track from a tracklog and photos
 

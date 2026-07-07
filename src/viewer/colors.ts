@@ -15,9 +15,23 @@ export const hexRgb = (h: string): number[] => {
 };
 
 export const C = {
-  marker: cssVar("--marker"),
-  markerInk: cssVar("--marker-ink"),
-  cardBack: cssVar("--card-back"),
-  trackLow: hexRgb(cssVar("--track-low")),
-  trackHigh: hexRgb(cssVar("--track-high")),
+  marker: "", markerInk: "", cardBack: "",
+  trackLow: [0, 0, 0] as number[],
+  trackHigh: [0, 0, 0] as number[],
 };
+
+/**
+ * Populate `C` from the :root CSS vars. Called at viewer startup (initCesium),
+ * NOT at import time — a bundler / dev server may not have applied the
+ * stylesheet yet when this module first evaluates, which would leave every
+ * color empty (and the track line black). By startup the CSS is applied, so
+ * getComputedStyle returns the real values. `C` stays a single object, so every
+ * module that imported it sees the filled-in colors.
+ */
+export function readColors() {
+  C.marker = cssVar("--marker");
+  C.markerInk = cssVar("--marker-ink");
+  C.cardBack = cssVar("--card-back");
+  C.trackLow = hexRgb(cssVar("--track-low"));
+  C.trackHigh = hexRgb(cssVar("--track-high"));
+}

@@ -9,7 +9,7 @@
 import { S } from "./state";
 import { reducedMotion, MARKER_ASPECT } from "./config";
 import { $, showToast, rampColor } from "./util";
-import { C } from "./colors";
+import { C, readColors } from "./colors";
 import { circleThumb, stackThumb } from "./markers";
 import { loadBundle } from "./bundle";
 import { frameFollow } from "./camera";
@@ -18,6 +18,7 @@ import { openLightbox } from "./lightbox";
 
 export async function initCesium(token: string) {
   Cesium.Ion.defaultAccessToken = token;
+  readColors();   // read the flight-viz colors now that the page's CSS is applied
 
   await loadBundle();   // fetch flight.json → pts, PHOTOS, stats, card
 

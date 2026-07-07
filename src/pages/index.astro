@@ -15,9 +15,14 @@ type Card = {
 };
 
 const FLIGHTS_DIR = path.resolve("public/flights");
-let flights: Card[] = [];
-try {
-  for (const slug of fs.readdirSync(FLIGHTS_DIR)) {
+let slugs: string[] = [];
+try { slugs = fs.readdirSync(FLIGHTS_DIR); } catch { /* no flights dir yet */ }
+
+const flights: Card[] = [];
+for (const slug of slugs) {
+  // per-flight try/catch: one malformed flight.json is skipped (with a build
+  // warning), never blanking the whole gallery
+  try {
     const jsonPath = path.join(FLIGHTS_DIR, slug, "flight.json");
     if (!fs.existsSync(jsonPath)) continue;
     const b = JSON.parse(fs.readFileSync(jsonPath, "utf8"));
@@ -35,8 +40,10 @@ try {
       photos: (b.media ?? []).length,
       thumb: first ? `/flights/${slug}/${first.thumb || first.web}` : null,
     });
+  } catch (e: any) {
+    console.warn(`[gallery] skipping ${slug}: ${e.message}`);
   }
-} catch { /* no flights dir yet */ }
+}
 flights.sort((a, b) => a.title.localeCompare(b.title));
 
 const fmtDate = (d: string) =>
