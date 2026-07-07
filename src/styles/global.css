@@ -275,8 +275,10 @@ button:focus-visible, input:focus-visible { outline: 2px solid var(--accent); ou
   .controls { grid-area: controls; }
   .right-cluster { grid-area: camera; gap: 8px; }        /* just the camera selector (clock hidden) */
   .telemetry { grid-area: telemetry; justify-content: space-between; gap: 6px; min-width: 0; }
-  /* compass floats just above the footer, bottom-right (absolute vs the strip) */
-  .compass { position: absolute; right: 12px; bottom: 100%; margin-bottom: 8px; width: 38px; height: 38px; }
+  /* compass floats just above the footer, bottom-right (absolute vs the strip).
+     top:auto is required — the desktop rule sets top:16px, and with both top and
+     bottom set on an absolute box, top would win and drop it onto the slider. */
+  .compass { position: absolute; top: auto; bottom: 100%; right: 12px; margin-bottom: 8px; width: 38px; height: 38px; }
 
   /* drop the labels + the UTC clock so the footer stays uncluttered on a phone */
   .seg-label { display: none; }
