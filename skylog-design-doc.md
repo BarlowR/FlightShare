@@ -67,7 +67,7 @@ Supabase Postgres (+ Auth, Row Level Security)
 
 ### 3.2 Component choices and rationale
 
-**Frontend:** Vite + TypeScript SPA. React optional; the viewer itself is deliberately framework-light so it can be reused verbatim in the standalone export.
+**Frontend:** Astro + TypeScript SPA (Astro builds on Vite, so the dev server, HMR, and esbuild-based TS transpile come for free, while Astro gives a clean static page shell and zero-JS-by-default output). No UI framework (React/etc.): the viewer is deliberately framework-light — a set of plain TypeScript modules that coordinate through one shared-state object — so it can be reused verbatim in the standalone export. Concretely: the viewer page is `src/pages/index.astro` (markup + the CDN Cesium loader), and the viewer logic lives in `src/viewer/*.ts` (state, config, colors, util, markers, camera, playback, lightbox, scene, bundle, main). CesiumJS is loaded from a CDN with an ordered fallback (§5.3) rather than bundled, keeping the standalone export portable.
 
 **Rendering engine:** CesiumJS, Apache-2.0 licensed and free for commercial use. It provides the 3D globe, terrain, time-dynamic entities, and clock — flight playback nearly out of the box. Terrain and imagery stream from Cesium ion for now (decision and cost implications in Section 8).
 
@@ -198,7 +198,7 @@ Six phases. Each has an exit criterion; a phase isn't done until it's met. Estim
 
 | Phase | Scope | Est. | Exit criterion |
 |---|---|---|---|
-| 0 — Foundation | Repo, CI, Vite app shell; Supabase project with full schema (users, flights, media, usage), RLS policies; R2 bucket + signed-upload worker; entitlements config module | 1–2 wk | An authenticated script can create a flight row and upload a file to R2 via signed URL |
+| 0 — Foundation | Repo, CI, Astro app shell (viewer split into `src/viewer/*.ts` modules — done); Supabase project with full schema (users, flights, media, usage), RLS policies; R2 bucket + signed-upload worker; entitlements config module | 1–2 wk | An authenticated script can create a flight row and upload a file to R2 via signed URL |
 | 1 — Local MVP | IGC/GPX parsing (`igc-parser` + GPX), EXIF via `exifr`, photo downscale/strip pipeline, sync-offset UI with live dots, full Cesium viewer (playback, dots, lightbox, flight strip, follow cam) running entirely on local files | 3–4 wk | A pilot processes a real flight end-to-end locally; viewer handles a 4-hour, 10k-fix IGC at 60 fps |
 | 2 — Hosting & sharing | Publish flow (draft → upload → confirm), slug + manage links, viewer-by-slug, OG tags with track thumbnail, delete-with-purge, rate limits and caps | 2–3 wk | A shared link opens on a phone that has never seen the app; deleting removes all R2 objects |
 | 3 — Polish & export | Standalone HTML export, track trimming, error/degraded-state UX (CDN fallback, terrain toasts), accessibility pass, mobile layout | 2 wk | Exported file opens from disk offline-except-tiles; Lighthouse a11y ≥ 90 |
@@ -243,4 +243,6 @@ Whether the standalone export ships in Phase 3 with ion imagery pending terms re
 
 ## Appendix A — Prototype
 
-A working single-file prototype (`flight-playback-demo.html`) exists: Cesium ion terrain, synthetic 43-minute Alpine flight, six generated placeholder photos, full playback chrome including the flight-strip scrubber, follow cam, lightbox, CDN fallback, and terrain diagnostics. It is the reference implementation for Section 5 and the seed of the Phase 1 viewer; its `DATA-GEN` block is the seam where real IGC parsing replaces synthetic data.
+A working single-file prototype (`flight-playback-demo.html`) exists: Cesium ion terrain, a real ~7-hour Chelan Butte XC (parsed IGC + eight timestamped photos), full playback chrome including the flight-strip scrubber, rubber-band follow cam, compass, multiphoto lightbox, CDN fallback, and terrain diagnostics. It is the reference implementation for Section 5 and the seed of the Phase 1 viewer.
+
+**Now split out (Phase 0 done):** the single file has been broken into the Astro app described in §3.2 — `src/pages/index.astro` (shell) + `src/styles/global.css` + `src/viewer/*.ts` (the framework-light viewer), with the demo bundle relocated to `public/flights/demo/` in the §3.3 layout (`flight.json` + `media/{id}_web.jpg` / `_thumb.jpg`). `flight-playback-demo.html` is retained as the single-file **standalone-export reference** (§5.4): it is the shape the export takes, and a build target to keep working as the module viewer evolves. `FEATURES.md` catalogs the viewer's behaviors and where each lives in the source.

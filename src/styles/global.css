@@ -1,0 +1,213 @@
+:root {
+  --panel: rgba(12, 18, 26, 0.88);
+  --panel-soft: rgba(12, 18, 26, 0.72);
+  --ink: #e9eef4;
+  --muted: #93a1b0;
+  --accent: #ffb454;      /* instrument amber */
+  --sky: #6fb7ff;         /* track blue */
+  --line: rgba(255, 255, 255, 0.09);
+  --radius: 14px;
+  --font-ui: "Space Grotesk", system-ui, sans-serif;
+  --font-data: "IBM Plex Mono", ui-monospace, monospace;
+
+  /* ---- flight-visualization colors (edit here; also read by the JS) ---- */
+  --track-low:   #2dd4ff;   /* track polyline at ground level */
+  --track-high:  #ff3d9a;   /* track polyline at the flight's max altitude */
+  --marker:      #ffb454;   /* photo pins, glider dot, trackpoint dots */
+  --marker-ink:  #14100a;   /* dark outline / text on markers */
+  --card-back:   #141b25;   /* card peeking behind stacked photos */
+  --compass-n:   #ff3d6b;   /* compass north arrow */
+  --compass-s:   #5b6b7a;   /* compass south arrow */
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; height: 100%; overflow: hidden; background: #05080c; }
+body { font-family: var(--font-ui); color: var(--ink); }
+
+#cesiumContainer { position: absolute; inset: 0; }
+.cesium-viewer-bottom { left: 8px !important; }  /* keep data attribution visible, tucked left */
+
+/* ---------- flight card ---------- */
+.flight-card {
+  position: absolute; top: 16px; left: 16px; z-index: 5;
+  width: min(320px, calc(100vw - 32px));
+  background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius);
+  padding: 16px 18px 14px; backdrop-filter: blur(10px);
+}
+.eyebrow {
+  font-family: var(--font-data); font-size: 10.5px; letter-spacing: 0.22em;
+  color: var(--accent); text-transform: uppercase; margin: 0 0 6px;
+}
+.eyebrow a { color: inherit; text-decoration: none; }
+.eyebrow a:hover { text-decoration: underline; }
+.flight-card h1 { font-size: 19px; font-weight: 700; margin: 0 0 4px; letter-spacing: 0.01em; }
+.flight-meta { font-size: 12.5px; color: var(--muted); margin: 0 0 12px; }
+.stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px 14px; border-top: 1px solid var(--line); padding-top: 12px; }
+.stat b { display: block; font-family: var(--font-data); font-size: 15px; font-weight: 600; color: var(--ink); }
+.stat span { font-size: 10.5px; color: var(--muted); letter-spacing: 0.06em; text-transform: uppercase; }
+
+/* pilot's description, collapsible */
+.desc { margin: 12px 0 0; border-top: 1px solid var(--line); padding-top: 10px; }
+.desc-text { margin: 0; font-size: 12px; line-height: 1.5; color: var(--muted); white-space: pre-wrap; }
+.desc-text.clamp { display: -webkit-box; -webkit-line-clamp: 3; line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+.desc-toggle {
+  margin-top: 4px; padding: 2px 0; background: none; border: 0; cursor: pointer;
+  color: var(--accent); font-family: var(--font-ui); font-size: 11.5px;
+}
+
+/* ---------- bottom flight strip ---------- */
+.strip {
+  position: absolute; left: 16px; right: 16px; bottom: 14px; z-index: 5;
+  background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius);
+  backdrop-filter: blur(10px);
+  display: grid; grid-template-columns: auto auto 1fr auto; gap: 14px; align-items: center;
+  padding: 10px 14px;
+}
+.controls { display: flex; align-items: center; gap: 10px; }
+button { font-family: inherit; }
+.btn-play {
+  width: 44px; height: 44px; border-radius: 50%; border: 1px solid var(--accent);
+  background: rgba(255, 180, 84, 0.12); color: var(--accent); cursor: pointer;
+  display: grid; place-items: center; transition: background 0.15s;
+}
+.btn-play:hover { background: rgba(255, 180, 84, 0.25); }
+.btn-play svg { width: 18px; height: 18px; fill: currentColor; }
+.seg { display: flex; border: 1px solid var(--line); border-radius: 9px; overflow: hidden; }
+.seg button {
+  background: transparent; border: 0; color: var(--muted); cursor: pointer;
+  font-family: var(--font-data); font-size: 11.5px; padding: 7px 10px;
+}
+.seg button + button { border-left: 1px solid var(--line); }
+.seg button[aria-pressed="true"] { background: rgba(255, 180, 84, 0.16); color: var(--accent); }
+.seg-label { font-size: 10px; color: var(--muted); letter-spacing: 0.1em; text-transform: uppercase; display: block; margin-bottom: 3px; }
+
+.telemetry { display: flex; gap: 16px; font-family: var(--font-data); }
+.telemetry .cell b { display: block; font-size: 16px; font-weight: 600; min-width: 74px; }
+.telemetry .cell span { font-size: 10px; color: var(--muted); letter-spacing: 0.1em; }
+#vario.up { color: var(--accent); }
+#vario.down { color: var(--sky); }
+
+.profile-wrap { position: relative; height: 72px; min-width: 140px; }
+#profile { position: absolute; inset: 0; width: 100%; height: 100%; cursor: crosshair; border-radius: 8px; touch-action: none; }
+
+.right-cluster { display: flex; align-items: center; gap: 14px; }
+.clock { font-family: var(--font-data); font-size: 12.5px; text-align: right; color: var(--ink); }
+.clock small { display: block; color: var(--muted); font-size: 10.5px; }
+
+button:focus-visible, input:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+/* ---------- status toast ---------- */
+.toast {
+  position: absolute; left: 50%; transform: translateX(-50%);
+  bottom: 112px; z-index: 15;
+  max-width: min(560px, calc(100vw - 40px));
+  background: var(--panel); border: 1px solid rgba(255, 125, 107, 0.55);
+  border-radius: 10px; padding: 10px 38px 10px 14px;
+  font-size: 12.5px; line-height: 1.5; color: var(--ink);
+  display: none; backdrop-filter: blur(10px);
+}
+.toast.show { display: block; }
+.toast button {
+  position: absolute; top: 6px; right: 6px;
+  background: none; border: 0; color: var(--muted); cursor: pointer; font-size: 14px;
+}
+
+/* ---------- photo panel (half-screen, non-modal) ----------
+   Occupies the right half; the globe stays live on the left, and the
+   bottom flight strip stays clear so you can scrub while a photo is open. */
+.lightbox {
+  position: fixed; top: 16px; right: 16px; bottom: 108px; z-index: 18;
+  width: min(46vw, 640px);
+  background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius);
+  backdrop-filter: blur(10px); padding: 14px;
+  display: none; flex-direction: column;
+}
+.lightbox.open { display: flex; }
+.lb-frame { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+.lb-frame img {
+  flex: 1; min-height: 0; width: 100%; object-fit: contain;
+  border-radius: var(--radius); border: 1px solid var(--line);
+  display: block; background: #05080c; box-shadow: 0 24px 80px rgba(0, 0, 0, 0.6);
+}
+/* group strip: circular thumbnails of the photos taken at this spot */
+.lb-strip { display: none; gap: 8px; margin-top: 10px; overflow-x: auto; padding-bottom: 2px; flex: 0 0 auto; }
+.lb-thumb {
+  flex: 0 0 auto; width: 42px; height: 42px; border-radius: 50%; padding: 0;
+  border: 2px solid var(--line); background-size: cover; background-position: center;
+  cursor: pointer; opacity: 0.65; transition: opacity 0.12s, border-color 0.12s, transform 0.12s;
+}
+.lb-thumb:hover { opacity: 1; transform: translateY(-1px); }
+.lb-thumb.active { border-color: var(--accent); opacity: 1; }
+.lb-bar { display: flex; align-items: flex-end; justify-content: space-between; gap: 12px; margin-top: 12px; flex-wrap: wrap; }
+.lb-caption { font-size: 15px; font-weight: 500; }
+#lbSpot { color: var(--accent); border-color: rgba(255, 180, 84, 0.5); }
+.lb-chips { display: flex; gap: 8px; margin-top: 5px; flex-wrap: wrap; }
+.chip {
+  font-family: var(--font-data); font-size: 11px; color: var(--muted);
+  border: 1px solid var(--line); border-radius: 999px; padding: 3px 9px; background: var(--panel-soft);
+}
+.lb-nav { display: flex; gap: 8px; }
+.lb-nav button, .lb-close {
+  background: var(--panel); color: var(--ink); border: 1px solid var(--line);
+  border-radius: 9px; padding: 8px 14px; cursor: pointer; font-size: 13px;
+}
+.lb-nav button:hover, .lb-close:hover { border-color: var(--accent); color: var(--accent); }
+.lb-close { position: absolute; top: 10px; right: 10px; padding: 5px 11px; z-index: 1; }
+@media (max-width: 880px) {
+  .lightbox { left: 12px; right: 12px; top: 12px; width: auto; height: 50vh; bottom: auto; }
+}
+
+/* ---------- gate / splash ---------- */
+.gate {
+  position: fixed; inset: 0; z-index: 30; background: #070b10;
+  display: flex; align-items: center; justify-content: center; padding: 20px;
+}
+.gate-card {
+  width: min(460px, 100%); background: var(--panel); border: 1px solid var(--line);
+  border-radius: var(--radius); padding: 26px 26px 22px;
+}
+.gate-card h2 { margin: 0 0 8px; font-size: 20px; }
+.gate-card p { color: var(--muted); font-size: 13.5px; line-height: 1.55; margin: 0 0 16px; }
+.gate-card a { color: var(--accent); }
+.gate-card input {
+  width: 100%; background: rgba(255, 255, 255, 0.05); border: 1px solid var(--line);
+  border-radius: 9px; color: var(--ink); font-family: var(--font-data); font-size: 12.5px;
+  padding: 11px 12px; margin-bottom: 12px;
+}
+.gate-card .go {
+  width: 100%; background: var(--accent); color: #14100a; border: 0; border-radius: 9px;
+  padding: 11px; font-size: 14px; font-weight: 700; cursor: pointer;
+}
+.gate-err { color: #ff7d6b; font-size: 12.5px; margin: 10px 0 0; display: none; }
+.loading { display: none; text-align: center; }
+.loading .ring {
+  width: 42px; height: 42px; margin: 0 auto 14px; border-radius: 50%;
+  border: 3px solid var(--line); border-top-color: var(--accent); animation: spin 0.9s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+@media (prefers-reduced-motion: reduce) {
+  .loading .ring { animation: none; }
+}
+
+@media (max-width: 880px) {
+  .strip { grid-template-columns: 1fr; gap: 10px; }
+  .profile-wrap { height: 56px; }
+  .telemetry { justify-content: space-between; }
+  .right-cluster { justify-content: space-between; }
+  .flight-card { padding: 12px 14px; }
+  .stats { grid-template-columns: repeat(3, 1fr); gap: 6px; }
+  .stat b { font-size: 13px; }
+}
+
+/* ---------- compass ---------- */
+.compass {
+  position: absolute; top: 16px; right: 16px; z-index: 6;
+  width: 46px; height: 46px; border-radius: 50%;
+  backdrop-filter: blur(8px); pointer-events: none;
+}
+.compass svg { width: 100%; height: 100%; display: block; }
+.compass-ring { fill: var(--panel); stroke: var(--line); stroke-width: 1; }
+.compass-view { fill: var(--accent); }                 /* fixed notch = view direction (screen up) */
+.compass-north { fill: var(--compass-n); }
+.compass-south { fill: var(--compass-s); }
+#compassRose { transform-box: fill-box; transform-origin: center; }

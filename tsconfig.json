@@ -1,0 +1,10 @@
+{
+  "extends": "astro/tsconfigs/base",
+  "compilerOptions": {
+    "strict": false,
+    "allowJs": true,
+    "types": ["astro/client"]
+  },
+  "include": ["src", "*.mjs"],
+  "exclude": ["dist", "node_modules"]
+}

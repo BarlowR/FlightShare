@@ -1,0 +1,18 @@
+{
+  "name": "skylog",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Skylog — 3D flight playback viewer (Astro + TypeScript).",
+  "scripts": {
+    "dev": "astro dev",
+    "build": "astro build",
+    "preview": "astro preview",
+    "check": "astro check"
+  },
+  "devDependencies": {
+    "@astrojs/check": "^0.9.4",
+    "astro": "^4.16.0",
+    "typescript": "^5.6.0"
+  }
+}
