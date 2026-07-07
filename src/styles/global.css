@@ -212,23 +212,12 @@ button:focus-visible, input:focus-visible { outline: 2px solid var(--accent); ou
   display: flex; align-items: center; justify-content: center; padding: 20px;
 }
 .gate-card {
-  width: min(460px, 100%); background: var(--panel); border: 1px solid var(--line);
-  border-radius: var(--radius); padding: 26px 26px 22px;
+  width: min(360px, 100%); background: var(--panel); border: 1px solid var(--line);
+  border-radius: var(--radius); padding: 26px; text-align: center;
 }
-.gate-card h2 { margin: 0 0 8px; font-size: 20px; }
-.gate-card p { color: var(--muted); font-size: 13.5px; line-height: 1.55; margin: 0 0 16px; }
-.gate-card a { color: var(--accent); }
-.gate-card input {
-  width: 100%; background: rgba(255, 255, 255, 0.05); border: 1px solid var(--line);
-  border-radius: 9px; color: var(--ink); font-family: var(--font-data); font-size: 12.5px;
-  padding: 11px 12px; margin-bottom: 12px;
-}
-.gate-card .go {
-  width: 100%; background: var(--accent); color: #14100a; border: 0; border-radius: 9px;
-  padding: 11px; font-size: 14px; font-weight: 700; cursor: pointer;
-}
-.gate-err { color: #ff7d6b; font-size: 12.5px; margin: 10px 0 0; display: none; }
-.loading { display: none; text-align: center; }
+.gate-err { color: #ff7d6b; font-size: 12.5px; line-height: 1.5; margin: 14px 0 0; display: none; }
+.gate-err.show { display: block; }
+.loading { text-align: center; }
 .loading .ring {
   width: 42px; height: 42px; margin: 0 auto 14px; border-radius: 50%;
   border: 3px solid var(--line); border-top-color: var(--accent); animation: spin 0.9s linear infinite;

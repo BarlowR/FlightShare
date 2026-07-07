@@ -6,7 +6,7 @@ export const RAD = Math.PI / 180;
  *  The gate prompts for one if this is empty and none is entered. */
 export const ION_TOKEN: string =
   import.meta.env.PUBLIC_CESIUM_ION_TOKEN ||
-  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJqdGkiOiI0ZGMyZmRkYS05ODIxLTRiMzItYmExZi1iN2ZlODY3MmI5MTciLCJpZCI6NDUyNDkxLCJzdWIiOiJtZXJsaW4tcm9iIiwiaXNzIjoiaHR0cHM6Ly9hcGkuY2VzaXVtLmNvbSIsImF1ZCI6IkRlbW8iLCJpYXQiOjE3ODMxODczMjh9.8RoknkKReRusoei_OpjsaA-nMQyrc0vcJgGmFNrSOYc";
+  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJqdGkiOiJjYjcxOTVjMy05NDc5LTQ5NDgtYTc0Zi01YWZlZTk5YWZjYWEiLCJpZCI6NDUyNDkxLCJzdWIiOiJtZXJsaW4tcm9iIiwiaXNzIjoiaHR0cHM6Ly9hcGkuY2VzaXVtLmNvbSIsImF1ZCI6IlNreUxvZyBDbGllbnQiLCJpYXQiOjE3ODM0NTg0NDV9.TpC48MAsvmUESznKARkZG9qfRoLj2klARX628Tw8SyE";
 
 /** Which flight bundle to load (design doc §3.3: flights/{slug}/flight.json).
  *  Precedence: ?flight= query param (a slug, or a full path to a flight.json)

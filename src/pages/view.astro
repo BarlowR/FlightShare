@@ -147,24 +147,14 @@ window.__cesiumReady = new Promise((resolve, reject) => {
   </div>
 </div>
 
-<!-- Token gate / loading -->
+<!-- Loading splash while CesiumJS + terrain stream in -->
 <div class="gate" id="gate">
   <div class="gate-card">
-    <div id="gateForm">
-      <p class="eyebrow">Skylog · Setup</p>
-      <h2>Cesium ion access token</h2>
-      <p>This viewer streams <b>Cesium World Terrain</b> and world imagery from Cesium ion.
-         Paste a token from your free account at
-         <a href="https://ion.cesium.com/tokens" target="_blank" rel="noopener">ion.cesium.com/tokens</a>
-         — or set <code>PUBLIC_CESIUM_ION_TOKEN</code> in a <code>.env</code> file.</p>
-      <input id="tokenInput" type="text" placeholder="eyJhbGciOi..." autocomplete="off" spellcheck="false" />
-      <button class="go" id="btnGo">Load flight</button>
-      <p class="gate-err" id="gateErr">That doesn't look like a token. Paste the full string from ion.cesium.com.</p>
-    </div>
     <div class="loading" id="gateLoading">
       <div class="ring"></div>
       <p style="color:var(--muted);font-size:13.5px;margin:0">Streaming terrain</p>
     </div>
+    <p class="gate-err" id="gateErr"></p>
   </div>
 </div>
 

@@ -1,6 +1,6 @@
 /**
- * Viewer entry point: wire the DOM controls, then run the token gate → Cesium
- * startup flow. Imported once by src/pages/index.astro.
+ * Viewer entry point: wire the DOM controls, then start Cesium (the ion token
+ * is baked into config.ts). Imported once by src/pages/view.astro.
  */
 
 import { S } from "./state";
@@ -53,37 +53,27 @@ document.addEventListener("keydown", (e: KeyboardEvent) => {
   if (e.key === "ArrowRight") openLightbox(S.lbIndex + 1);
 });
 
-/* ---- token gate → startup ---- */
+/* ---- startup ---- the ion token is baked in (config.ts), so the viewer loads
+   straight into the flight, showing errors in the splash if Cesium can't start */
 function gateFail(msg: string) {
   $("gateLoading").style.display = "none";
-  $("gateForm").style.display = "block";
   const e = $("gateErr");
   e.textContent = msg;
-  e.style.display = "block";
+  e.classList.add("show");
 }
 
-async function tryStart(token: string) {
-  token = (token || "").trim();
-  if (token.length < 20) {
-    gateFail("That doesn't look like a token. Paste the full string from ion.cesium.com.");
-    return;
-  }
-  $("gateForm").style.display = "none";
-  $("gateLoading").style.display = "block";
+async function start() {
   try {
     await window.__cesiumReady;
   } catch {
-    gateFail("Couldn't load the CesiumJS library from its CDN. Check your internet connection or content blocker, then try again.");
+    gateFail("Couldn't load the CesiumJS library from its CDN. Check your internet connection or content blocker, then reload.");
     return;
   }
   try {
-    await initCesium(token);
+    await initCesium(ION_TOKEN);
   } catch (err: any) {
     gateFail("Cesium failed to start: " + err.message);
   }
 }
 
-$("btnGo").addEventListener("click", () => tryStart($("tokenInput").value));
-$("tokenInput").addEventListener("keydown", (e: KeyboardEvent) => { if (e.key === "Enter") tryStart($("tokenInput").value); });
-
-tryStart(ION_TOKEN);
+start();
