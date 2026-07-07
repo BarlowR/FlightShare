@@ -8,13 +8,19 @@ import { ION_TOKEN } from "./config";
 import { $ } from "./util";
 import { setPlaying, initProfile } from "./playback";
 import { setCameraMode } from "./camera";
-import { openLightbox, closeLightbox } from "./lightbox";
+import { openLightbox, closeLightbox, initLightboxGestures } from "./lightbox";
 import { initCesium } from "./scene";
 
 /* ---- UI wiring ---- */
 initProfile();
 
 $("toastClose").addEventListener("click", () => $("toast").classList.remove("show"));
+
+// collapse/expand the flight card body (mobile header)
+$("cardToggle").addEventListener("click", () => {
+  const collapsed = $("flightCard").classList.toggle("collapsed");
+  $("cardToggle").setAttribute("aria-expanded", String(!collapsed));
+});
 
 // expand/collapse the flight description
 $("descToggle").addEventListener("click", () => {
@@ -38,8 +44,8 @@ $("camSeg").addEventListener("click", (e: MouseEvent) => {
 });
 
 $("lbClose").addEventListener("click", closeLightbox);
-$("lbPrev").addEventListener("click", () => openLightbox(S.lbIndex - 1));
-$("lbNext").addEventListener("click", () => openLightbox(S.lbIndex + 1));
+initLightboxGestures();   // swipe left/right on the photo → next/prev
+// keyboard still navigates (arrows) and closes (Esc); dots + swipe replace the buttons
 document.addEventListener("keydown", (e: KeyboardEvent) => {
   if (!$("lightbox").classList.contains("open")) return;
   if (e.key === "Escape") closeLightbox();

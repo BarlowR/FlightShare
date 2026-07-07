@@ -75,9 +75,14 @@ export function applyPanOffset() {
   const r = $("lightbox").getBoundingClientRect();
   const aspect = cw / ch;
   if (r.right - r.left >= cw - 40) {
-    // full-width sheet: pan vertically so the subject is in the taller free strip
+    // full-width sheet (top): center the subject in the free band BETWEEN the
+    // panel's bottom and the footer's top — not all the way to the screen edge,
+    // or it sits too low, tucked behind the footer
     const fovy = aspect >= 1 ? 2 * Math.atan(Math.tan(fr.fov / 2) / aspect) : fr.fov;
-    const fy = (r.top <= 40 ? (r.bottom + ch) / 2 : r.top / 2) / ch;
+    const footer = document.querySelector(".strip") as HTMLElement | null;
+    const bandBottom = footer ? Math.min(ch, footer.getBoundingClientRect().top) : ch;
+    const bandTop = r.top <= 40 ? r.bottom : 0;
+    const fy = ((bandTop + bandBottom) / 2) / ch;      // desired subject fraction from top
     S.viewer.camera.lookUp(Math.atan((2 * fy - 1) * Math.tan(fovy / 2)));
   } else {
     // side panel: pan sideways so the subject lands in the free strip

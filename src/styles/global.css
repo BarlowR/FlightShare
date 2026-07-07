@@ -39,6 +39,15 @@ body { font-family: var(--font-ui); color: var(--ink); }
 }
 .eyebrow a { color: inherit; text-decoration: none; }
 .eyebrow a:hover { text-decoration: underline; }
+/* header row (title + a collapse toggle). The toggle only shows on mobile,
+   where the card becomes a header and card-body collapses. */
+.card-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; }
+.card-toggle {
+  display: none; background: none; border: 0; cursor: pointer;
+  color: var(--muted); font-size: 17px; line-height: 1; padding: 2px 4px;
+  transition: transform 0.15s;
+}
+.flight-card.collapsed .card-toggle { transform: rotate(-90deg); }
 .flight-card h1 { font-size: 19px; font-weight: 700; margin: 0 0 4px; letter-spacing: 0.01em; }
 .flight-meta { font-size: 12.5px; color: var(--muted); margin: 0 0 12px; }
 .stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px 14px; border-top: 1px solid var(--line); padding-top: 12px; }
@@ -124,10 +133,19 @@ button:focus-visible, input:focus-visible { outline: 2px solid var(--accent); ou
 .lightbox.open { display: flex; }
 .lb-frame { flex: 1; min-height: 0; display: flex; flex-direction: column; }
 .lb-frame img {
-  flex: 1; min-height: 0; width: 100%; object-fit: contain;
+  flex: 1; min-height: 0; width: 100%; object-fit: cover;   /* fill the frame — no black letterbox bars */
   border-radius: var(--radius); border: 1px solid var(--line);
-  display: block; background: #05080c; box-shadow: 0 24px 80px rgba(0, 0, 0, 0.6);
+  display: block; box-shadow: 0 24px 80px rgba(0, 0, 0, 0.6);
+  touch-action: pan-y pinch-zoom;   /* let horizontal swipes drive prev/next */
 }
+/* pagination dots: one per photo in the flight, swipe or tap to navigate */
+.lb-dots { display: flex; justify-content: center; gap: 7px; margin-top: 10px; flex: 0 0 auto; flex-wrap: wrap; }
+.lb-dots button {
+  width: 8px; height: 8px; padding: 0; border-radius: 50%; cursor: pointer;
+  border: 0; background: var(--line); transition: background 0.15s, transform 0.15s;
+}
+.lb-dots button:hover { background: var(--muted); }
+.lb-dots button[aria-current="true"] { background: var(--accent); transform: scale(1.35); }
 /* group strip: circular thumbnails of the photos taken at this spot */
 .lb-strip { display: none; gap: 8px; margin-top: 10px; overflow-x: auto; padding-bottom: 2px; flex: 0 0 auto; }
 .lb-thumb {
@@ -145,15 +163,47 @@ button:focus-visible, input:focus-visible { outline: 2px solid var(--accent); ou
   font-family: var(--font-data); font-size: 11px; color: var(--muted);
   border: 1px solid var(--line); border-radius: 999px; padding: 3px 9px; background: var(--panel-soft);
 }
-.lb-nav { display: flex; gap: 8px; }
-.lb-nav button, .lb-close {
+.lb-close {
   background: var(--panel); color: var(--ink); border: 1px solid var(--line);
   border-radius: 9px; padding: 8px 14px; cursor: pointer; font-size: 13px;
 }
-.lb-nav button:hover, .lb-close:hover { border-color: var(--accent); color: var(--accent); }
+.lb-close:hover { border-color: var(--accent); color: var(--accent); }
 .lb-close { position: absolute; top: 10px; right: 10px; padding: 5px 11px; z-index: 1; }
+
+/* ---------- compass ----------
+   Lives inside the strip in the DOM; fixed to the viewport's top-right on
+   desktop, and floats just above the footer on mobile (see the media query).
+   Declared before the media queries so those overrides win the cascade. */
+.compass {
+  position: fixed; top: 16px; right: 16px; z-index: 6;
+  width: 46px; height: 46px; border-radius: 50%;
+  backdrop-filter: blur(8px); pointer-events: none;
+}
+.compass svg { width: 100%; height: 100%; display: block; }
+.compass-ring { fill: var(--panel); stroke: var(--line); stroke-width: 1; }
+.compass-view { fill: var(--accent); }                 /* fixed notch = view direction (screen up) */
+.compass-north { fill: var(--compass-n); }
+.compass-south { fill: var(--compass-s); }
+#compassRose { transform-box: fill-box; transform-origin: center; }
+
 @media (max-width: 880px) {
-  .lightbox { left: 12px; right: 12px; top: 12px; width: auto; height: 50vh; bottom: auto; }
+  /* photo panel folds out downward from the header: anchored to the top edge,
+     full width, unrolling from the top when opened. Kept displayed so it can
+     animate (transform can't animate from display:none). */
+  .lightbox {
+    display: flex; left: 0; right: 0; top: 0; bottom: auto; width: auto;
+    height: 58vh; border-radius: 0 0 var(--radius) var(--radius);
+    padding: max(12px, env(safe-area-inset-top)) 12px 12px;
+    transform: scaleY(0); transform-origin: top; opacity: 0; pointer-events: none;
+    transition: transform 0.26s ease, opacity 0.2s ease;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+  }
+  .lightbox.open { transform: scaleY(1); opacity: 1; pointer-events: auto; }
+  .lb-close { top: max(8px, env(safe-area-inset-top)); right: 8px; }
+  .lb-dots button { width: 9px; height: 9px; }   /* bigger tap targets on mobile */
+}
+@media (max-width: 880px) and (prefers-reduced-motion: reduce) {
+  .lightbox { transition: none; }   /* no fold animation when reduced motion is set */
 }
 
 /* ---------- gate / splash ---------- */
@@ -190,24 +240,58 @@ button:focus-visible, input:focus-visible { outline: 2px solid var(--accent); ou
 }
 
 @media (max-width: 880px) {
-  .strip { grid-template-columns: 1fr; gap: 10px; }
-  .profile-wrap { height: 56px; }
-  .telemetry { justify-content: space-between; }
-  .right-cluster { justify-content: space-between; }
-  .flight-card { padding: 12px 14px; }
-  .stats { grid-template-columns: repeat(3, 1fr); gap: 6px; }
+  /* ---- flight card → full-width header; only the title stays when collapsed ---- */
+  .flight-card {
+    top: 0; left: 0; right: 0; width: auto; z-index: 7;
+    border-radius: 0 0 var(--radius) var(--radius);
+    padding: max(8px, env(safe-area-inset-top)) 14px 10px;
+  }
+  .card-toggle { display: block; }
+  .flight-card.collapsed .card-body { display: none; }
+  .card-body { margin-top: 8px; }
+  .card-head-text .eyebrow { margin: 0 0 3px; }
+  .flight-card h1 { font-size: 16px; }
+  .flight-meta { font-size: 11.5px; margin: 0 0 10px; }
+  /* stats as a tidy left-aligned group instead of stretching the full header width */
+  .stats { grid-template-columns: repeat(3, auto); justify-content: start; gap: 4px 26px; padding-top: 10px; }
   .stat b { font-size: 13px; }
+  .stat span { font-size: 9.5px; }
+  .desc-text { font-size: 11.5px; }
+
+  /* ---- strip → full-width footer, led by the altitude slider, with the compass ----
+     row 1 = slider (full width) · row 2 = play/speed | camera+clock · row 3 = telemetry | compass */
+  .strip {
+    left: 0; right: 0; bottom: 0; width: auto;
+    border-radius: var(--radius) var(--radius) 0 0;
+    padding: 9px 12px max(9px, env(safe-area-inset-bottom));
+    gap: 10px 12px; align-items: center;
+    grid-template-columns: auto 1fr auto;
+    grid-template-areas:
+      "profile   profile   profile"
+      "controls  .         camera"
+      "telemetry telemetry telemetry";
+  }
+  .profile-wrap { grid-area: profile; height: 54px; }
+  .controls { grid-area: controls; }
+  .right-cluster { grid-area: camera; gap: 8px; }        /* just the camera selector (clock hidden) */
+  .telemetry { grid-area: telemetry; justify-content: space-between; gap: 6px; min-width: 0; }
+  /* compass floats just above the footer, bottom-right (absolute vs the strip) */
+  .compass { position: absolute; right: 12px; bottom: 100%; margin-bottom: 8px; width: 38px; height: 38px; }
+
+  /* drop the labels + the UTC clock so the footer stays uncluttered on a phone */
+  .seg-label { display: none; }
+  .clock { display: none; }
+  .seg button { padding: 7px 9px; }
+  .telemetry .cell b { font-size: 14px; min-width: 0; }
+  .telemetry .cell span { font-size: 9px; }
+
+  /* keep a sticky toast clear of the taller footer */
+  .toast { bottom: 168px; }
 }
 
-/* ---------- compass ---------- */
-.compass {
-  position: absolute; top: 16px; right: 16px; z-index: 6;
-  width: 46px; height: 46px; border-radius: 50%;
-  backdrop-filter: blur(8px); pointer-events: none;
+/* landscape phones are short: keep the header collapsed-friendly and slim the footer */
+@media (max-width: 880px) and (max-height: 460px) {
+  .profile-wrap { height: 44px; }
+  .lightbox { height: 78vh; }
 }
-.compass svg { width: 100%; height: 100%; display: block; }
-.compass-ring { fill: var(--panel); stroke: var(--line); stroke-width: 1; }
-.compass-view { fill: var(--accent); }                 /* fixed notch = view direction (screen up) */
-.compass-north { fill: var(--compass-n); }
-.compass-south { fill: var(--compass-s); }
-#compassRose { transform-box: fill-box; transform-origin: center; }
+

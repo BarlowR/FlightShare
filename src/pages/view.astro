@@ -6,7 +6,7 @@ import "../styles/global.css";
 <html lang="en">
 <head>
 <meta charset="utf-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
 <title>Skylog — flight playback</title>
 
 <!-- CesiumJS loader: official CDN first, jsDelivr as fallback. is:inline keeps
@@ -50,35 +50,30 @@ window.__cesiumReady = new Promise((resolve, reject) => {
 
 <div id="cesiumContainer"></div>
 
-<!-- Compass: fixed top notch = view direction; the rose's red arrow points to true north -->
-<div class="compass" id="compass" title="Camera heading">
-  <svg viewBox="0 0 46 46" aria-hidden="true">
-    <circle class="compass-ring" cx="23" cy="23" r="21" />
-    <polygon class="compass-view" points="23,0 26,5 20,5" />
-    <g id="compassRose">
-      <polygon class="compass-north" points="23,8 27,23 23,19 19,23" />
-      <polygon class="compass-south" points="23,38 27,23 23,27 19,23" />
-    </g>
-  </svg>
-</div>
-
-<!-- Flight card -->
-<aside class="flight-card" aria-label="Flight information">
-  <p class="eyebrow"><a href="/">← Skylog flights</a></p>
-  <h1 id="flightTitle">—</h1>
-  <p class="flight-meta" id="flightMeta">—</p>
-  <div class="stats">
-    <div class="stat"><b id="stDur">—</b><span>Duration</span></div>
-    <div class="stat"><b id="stMax">—</b><span>Max alt</span></div>
-    <div class="stat"><b id="stClimb">—</b><span>Best climb</span></div>
+<!-- Flight card — a header on mobile; everything below the title collapses -->
+<aside class="flight-card collapsed" id="flightCard" aria-label="Flight information">
+  <div class="card-head">
+    <div class="card-head-text">
+      <p class="eyebrow"><a href="/">← Skylog flights</a></p>
+      <h1 id="flightTitle">—</h1>
+    </div>
+    <button class="card-toggle" id="cardToggle" aria-label="Show flight details" aria-expanded="false">▾</button>
   </div>
-  <div class="desc" id="descWrap" hidden>
-    <p class="desc-text clamp" id="flightDesc"></p>
-    <button class="desc-toggle" id="descToggle" aria-expanded="false">More</button>
+  <div class="card-body" id="cardBody">
+    <p class="flight-meta" id="flightMeta">—</p>
+    <div class="stats">
+      <div class="stat"><b id="stDur">—</b><span>Duration</span></div>
+      <div class="stat"><b id="stMax">—</b><span>Max alt</span></div>
+      <div class="stat"><b id="stClimb">—</b><span>Best climb</span></div>
+    </div>
+    <div class="desc" id="descWrap" hidden>
+      <p class="desc-text clamp" id="flightDesc"></p>
+      <button class="desc-toggle" id="descToggle" aria-expanded="false">More</button>
+    </div>
   </div>
 </aside>
 
-<!-- Bottom flight strip -->
+<!-- Bottom flight strip — a footer on mobile (slider + controls + compass) -->
 <div class="strip" role="region" aria-label="Playback controls">
   <div class="controls">
     <button class="btn-play" id="btnPlay" aria-label="Play flight">
@@ -111,6 +106,19 @@ window.__cesiumReady = new Promise((resolve, reject) => {
     </div>
     <div class="clock"><span id="tUTC">—</span><small id="tElapsed">+00:00</small></div>
   </div>
+
+  <!-- Compass: fixed top-right on desktop; sits in the footer on mobile.
+       Fixed top notch = view direction; the rose's red arrow points to true north. -->
+  <div class="compass" id="compass" title="Camera heading">
+    <svg viewBox="0 0 46 46" aria-hidden="true">
+      <circle class="compass-ring" cx="23" cy="23" r="21" />
+      <polygon class="compass-view" points="23,0 26,5 20,5" />
+      <g id="compassRose">
+        <polygon class="compass-north" points="23,8 27,23 23,19 19,23" />
+        <polygon class="compass-south" points="23,38 27,23 23,27 19,23" />
+      </g>
+    </svg>
+  </div>
 </div>
 
 <div class="toast" id="toast" role="status">
@@ -123,6 +131,7 @@ window.__cesiumReady = new Promise((resolve, reject) => {
   <button class="lb-close" id="lbClose" aria-label="Close photo">✕</button>
   <div class="lb-frame">
     <img id="lbImg" alt="Flight photo" />
+    <div class="lb-dots" id="lbDots" role="tablist" aria-label="Photos — swipe or tap a dot"></div>
     <div class="lb-strip" id="lbStrip" role="group" aria-label="Photos at this spot"></div>
     <div class="lb-bar">
       <div>
@@ -133,10 +142,6 @@ window.__cesiumReady = new Promise((resolve, reject) => {
           <span class="chip" id="lbAlt"></span>
           <span class="chip" id="lbCount"></span>
         </div>
-      </div>
-      <div class="lb-nav">
-        <button id="lbPrev">← Prev</button>
-        <button id="lbNext">Next →</button>
       </div>
     </div>
   </div>
