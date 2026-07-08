@@ -174,7 +174,7 @@ export function scrubTo(targetT: number) {
   cancelScrub();
   const startT = nowSeconds(), delta = targetT - startT;
   if (reducedMotion || Math.abs(delta) < 0.5) { seek(targetT); return; }
-  const dur = Math.min(1200, 420 + Math.abs(delta) / S.TOTAL * 900);   // ms: quick, scales gently
+  const dur = Math.min(2400, 840 + Math.abs(delta) / S.TOTAL * 1800);  // ms: eased glide, ~2× slower than a snap
   const t0 = performance.now();
   S.scrubAnim = true;
   const stepFn = (now: number) => {

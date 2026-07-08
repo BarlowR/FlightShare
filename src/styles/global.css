@@ -182,10 +182,14 @@ button:focus-visible, input:focus-visible { outline: 2px solid var(--accent); ou
 .lightbox.open { display: flex; }
 .lb-frame { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; }
 .lb-frame img {
-  /* show the whole photo: width fills the panel, height follows the image's
-     aspect ratio (the panel grows to match). Tall photos are capped by the
-     panel's max-height and scale down to fit rather than overflowing. */
-  width: 100%; height: auto; max-height: 100%; object-fit: contain;
+  /* width fills the panel; height follows the image's aspect ratio and the panel
+     grows to match, so a photo that fits is shown whole. A photo too tall for the
+     available space is capped by the panel's max-height and cropped vertically
+     (cover) — filling the width and cutting off top/bottom.
+     min-height:0 is essential: a flex img defaults to min-height:auto and won't
+     shrink below its intrinsic height, so without it a tall photo overflows the
+     panel instead of being cropped. */
+  width: 100%; height: auto; min-height: 0; max-height: 100%; object-fit: cover;
   border-radius: var(--radius); border: 1px solid var(--line);
   display: block; box-shadow: 0 24px 80px rgba(0, 0, 0, 0.6);
   touch-action: pan-y pinch-zoom;   /* let horizontal swipes drive prev/next */
