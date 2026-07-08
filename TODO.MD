@@ -39,3 +39,5 @@
 - [ ] Activity specific fields
 
 - [ ] User & flight backend 
+
+- [ ] Add title photo selector

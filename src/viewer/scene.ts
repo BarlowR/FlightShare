@@ -95,6 +95,20 @@ export async function initCesium(token: string) {
     return groundAtSample[lo] + (groundAtSample[hi] - groundAtSample[lo]) * f;
   }
 
+  /* snap any track point that sits below the sampled terrain up onto the
+     surface — GNSS altitude noise or a terrain mismatch would otherwise bury
+     the track (and the glider following it) underground. Mutating S.pts here
+     feeds the corrected altitude to the polyline, glider samples, tethers, and
+     telemetry alike. Only when terrain actually loaded; with no ground data
+     (groundAtSample all 0) we leave altitudes untouched. */
+  const SNAP_OFFSET = 2;   // sit a hair above the surface, not exactly on it
+  if (terrainOk) {
+    for (let i = 0; i < pts.length; i++) {
+      const ground = groundHeightAt(i) + SNAP_OFFSET;
+      if (pts[i].alt < ground) pts[i].alt = ground;
+    }
+  }
+
   const clock = viewer.clock;
   S.clock = clock;
   clock.startTime = Cesium.JulianDate.fromDate(new Date(S.T0));
