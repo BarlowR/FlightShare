@@ -73,6 +73,10 @@ window.__cesiumReady = new Promise((resolve, reject) => {
   </div>
 </aside>
 
+<!-- Floating "back to editing" button — shown (and positioned under the flight
+     card) only when previewing an in-browser draft (?draft=slug). -->
+<a class="edit-return" id="editReturn" hidden>← Back to editing</a>
+
 <!-- Bottom flight strip — a footer on mobile (slider + controls + compass) -->
 <div class="strip" role="region" aria-label="Playback controls">
   <div class="controls">

@@ -30,9 +30,10 @@
 
 - [x] Refactor with proper structure across multiple files
 
-- [ ] Create a page to generate a track from a tracklog and photos
+- [x] Create a page to generate a track from a tracklog and photos
 
 - [ ] Add video player
 
 - [ ] Add text annotations
 
+- [ ] Activity specific fields

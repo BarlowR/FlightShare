@@ -8,7 +8,7 @@
  */
 
 import { S } from "./state";
-import { RAD, FOLLOW_RANGE, FOLLOW_PITCH, FOLLOW_TAU } from "./config";
+import { FOLLOW_RANGE, FOLLOW_PITCH, FOLLOW_TAU } from "./config";
 import { $ } from "./util";
 
 /** Distance that frames ~2/3 of the track's extent for the default overhead view. */

@@ -6,15 +6,55 @@
  */
 
 import { S, type Photo, type PhotoGroup } from "./state";
-import { FLIGHT_URL, GROUP_DIST_M } from "./config";
+import { FLIGHT_URL, DRAFT_SLUG, GROUP_DIST_M } from "./config";
+import { loadDraft } from "../ingest/store";
 import { $, pad, haversine } from "./util";
 import { buildSpeedControls } from "./playback";
 
-export async function loadBundle() {
+/**
+ * Obtain the flight to render and a function that turns a bundle-relative media
+ * path into a loadable URL. Two sources: a published flight.json (fetched, media
+ * resolved against its folder) or an in-browser draft (?draft=slug — media
+ * resolved to blob: URLs from IndexedDB, for previewing an edit).
+ */
+async function loadSource(): Promise<{ b: any; resolveMedia: (p: string) => string }> {
+  if (DRAFT_SLUG) {
+    const d = await loadDraft(DRAFT_SLUG);
+    if (!d) throw new Error(`Draft "${DRAFT_SLUG}" isn't in this browser. Open it from the editor.`);
+    const cache = new Map<string, string>();
+    const resolveMedia = (p: string) => {
+      if (!cache.has(p)) { const blob = d.blobs?.[p]; cache.set(p, blob ? URL.createObjectURL(blob) : ""); }
+      return cache.get(p)!;
+    };
+    showEditReturn(DRAFT_SLUG);
+    return { b: d.bundle, resolveMedia };
+  }
   const res = await fetch(FLIGHT_URL);
   if (!res.ok) throw new Error(`Couldn't load ${FLIGHT_URL} (HTTP ${res.status})`);
-  const b = await res.json();
-  S.bundleBase = FLIGHT_URL.replace(/[^/]*$/, "");   // e.g. "/flights/demo/"
+  const base = FLIGHT_URL.replace(/[^/]*$/, "");   // e.g. "/flights/demo/"
+  return { b: await res.json(), resolveMedia: (p: string) => encodeURI(base + p) };
+}
+
+/** Reveal the floating "back to editing" button and keep it pinned just below
+ *  the flight card as that card resizes (collapse toggle, description more/less,
+ *  font load) or the window changes. */
+function showEditReturn(slug: string) {
+  const back = $("editReturn"), card = $("flightCard");
+  if (!back || !card) return;
+  back.setAttribute("href", `/edit?draft=${encodeURIComponent(slug)}`);
+  back.hidden = false;
+  const place = () => {
+    const r = card.getBoundingClientRect();
+    back.style.top = `${r.bottom + 8}px`;
+    back.style.left = `${r.left}px`;
+  };
+  place();
+  new ResizeObserver(place).observe(card);
+  window.addEventListener("resize", place);
+}
+
+export async function loadBundle() {
+  const { b, resolveMedia } = await loadSource();
 
   S.T0 = Date.parse(b.track.t0);
   S.DT = b.track.dt || 1;
@@ -42,8 +82,8 @@ export async function loadBundle() {
     .map((m: any, i: number): Photo => ({
       i, t: m.t, tPos: Math.max(0, Math.min(S.TOTAL, m.t)),
       lat: m.lat, lon: m.lon, alt: m.alt, caption: m.caption,
-      img: encodeURI(S.bundleBase + m.web),
-      thumb: encodeURI(S.bundleBase + (m.thumb || m.web)),
+      img: resolveMedia(m.web),
+      thumb: resolveMedia(m.thumb || m.web),
     }));
 
   /* cluster photos taken at the same spot on the track (within GROUP_DIST_M),

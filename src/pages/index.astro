@@ -49,6 +49,11 @@ flights.sort((a, b) => a.title.localeCompare(b.title));
 const fmtDate = (d: string) =>
   d ? new Date(d + "T00:00:00Z").toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric", timeZone: "UTC" }) : "";
 const fmtDur = (m: number) => (m >= 60 ? `${Math.floor(m / 60)}h ${m % 60}m` : `${m}m`);
+
+// Dev backdoor: the per-flight Edit links only exist under `astro dev`. In a
+// production `astro build` this is statically false, so the links are never
+// emitted into the HTML at all.
+const DEV = import.meta.env.DEV;
 ---
 
 <!doctype html>
@@ -67,7 +72,14 @@ const fmtDur = (m: number) => (m >= 60 ? `${Math.floor(m / 60)}h ${m % 60}m` : `
 </style>
 <style>
   .wrap { max-width: 1080px; margin: 0 auto; padding: 48px 24px 64px; }
-  header { margin-bottom: 28px; }
+  header { margin-bottom: 28px; display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; }
+  .new-flight {
+    flex: 0 0 auto; text-decoration: none; font-size: 13px; font-weight: 400;
+    color: var(--accent); background: rgba(214, 189, 155, 0.14);
+    border: 1px solid var(--accent); border-radius: 9px; padding: 8px 14px;
+    transition: background 0.15s;
+  }
+  .new-flight:hover { background: rgba(214, 189, 155, 0.24); }
   .eyebrow { font-family: var(--font-data); font-size: 11px; letter-spacing: 0.22em; color: var(--accent); text-transform: uppercase; margin: 0 0 8px; }
   h1 { font-size: var(--fs-title); font-weight: 100; margin: 0 0 6px; letter-spacing: 0.01em; }
   .sub { color: var(--muted); font-size: 14px; margin: 0; font-weight: 300; }
@@ -79,6 +91,15 @@ const fmtDur = (m: number) => (m >= 60 ? `${Math.floor(m / 60)}h ${m % 60}m` : `
     overflow: hidden; transition: border-color 0.15s, transform 0.15s;
   }
   .card:hover { border-color: var(--accent); transform: translateY(-2px); }
+  .card-wrap { position: relative; }
+  /* dev-only edit affordance (the element is only emitted under `astro dev`) */
+  .card-edit {
+    position: absolute; top: 10px; right: 10px; z-index: 2;
+    text-decoration: none; font-size: 12px; color: var(--accent);
+    background: var(--panel); border: 1px solid var(--accent); border-radius: 8px;
+    padding: 4px 10px; backdrop-filter: blur(6px);
+  }
+  .card-edit:hover { background: rgba(214, 189, 155, 0.2); }
   .thumb { height: 156px; background-color: var(--card-back); background-size: cover; background-position: center; border-bottom: 1px solid var(--line); }
   .card-body { padding: 14px 16px 16px; }
   .card h2 { font-size: var(--fs-sub); font-weight: 300; margin: 0 0 4px; }
@@ -95,9 +116,12 @@ const fmtDur = (m: number) => (m >= 60 ? `${Math.floor(m / 60)}h ${m % 60}m` : `
 <body>
 <div class="wrap">
   <header>
-    <p class="eyebrow">Skylog</p>
-    <h1>Flights</h1>
-    <p class="sub">Pick a flight to play back in 3D.</p>
+    <div class="head-text">
+      <p class="eyebrow">Skylog</p>
+      <h1>Flights</h1>
+      <p class="sub">Pick a flight to play back in 3D.</p>
+    </div>
+    <a class="new-flight" href="/upload">+ New flight</a>
   </header>
 
   {flights.length === 0 ? (
@@ -105,18 +129,21 @@ const fmtDur = (m: number) => (m >= 60 ? `${Math.floor(m / 60)}h ${m % 60}m` : `
   ) : (
     <div class="grid">
       {flights.map((f) => (
-        <a class="card" href={`/view?flight=${f.slug}`}>
-          <div class="thumb" style={f.thumb ? `background-image:url('${f.thumb}')` : ""}></div>
-          <div class="card-body">
-            <h2>{f.title}</h2>
-            <p class="meta">{[fmtDate(f.date), f.pilot, f.site].filter(Boolean).join(" · ")}</p>
-            <div class="chips">
-              <span class="chip">{fmtDur(f.durationMin)}</span>
-              <span class="chip">{f.maxAlt} m</span>
-              <span class="chip">{f.photos} photos</span>
+        <div class="card-wrap">
+          <a class="card" href={`/view?flight=${f.slug}`}>
+            <div class="thumb" style={f.thumb ? `background-image:url('${f.thumb}')` : ""}></div>
+            <div class="card-body">
+              <h2>{f.title}</h2>
+              <p class="meta">{[fmtDate(f.date), f.pilot, f.site].filter(Boolean).join(" · ")}</p>
+              <div class="chips">
+                <span class="chip">{fmtDur(f.durationMin)}</span>
+                <span class="chip">{f.maxAlt} m</span>
+                <span class="chip">{f.photos} photos</span>
+              </div>
             </div>
-          </div>
-        </a>
+          </a>
+          {DEV && <a class="card-edit" href={`/edit?flight=${f.slug}`}>Edit</a>}
+        </div>
       ))}
     </div>
   )}

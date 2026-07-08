@@ -18,6 +18,10 @@ function resolveFlightUrl(): string {
 }
 export const FLIGHT_URL: string = resolveFlightUrl();
 
+/** When set (?draft=<slug>), the viewer loads an in-browser draft from IndexedDB
+ *  instead of fetching a published flight.json — used to preview an edit. */
+export const DRAFT_SLUG: string | null = new URLSearchParams(location.search).get("draft");
+
 /** Photos within this distance on the track collapse into one multiphoto marker. */
 export const GROUP_DIST_M = 250;
 

@@ -41,6 +41,18 @@ body { font-family: var(--font-ui); color: var(--ink); font-weight: 300; }
 .telemetry, .clock, .stat b, .seg button, .chip { font-variant-numeric: tabular-nums; }
 
 #cesiumContainer { position: absolute; inset: 0; }
+
+/* floating "back to editing" button (draft preview) — top/left set by JS to sit
+   just under the flight card */
+.edit-return {
+  position: fixed; z-index: 6; top: 0; left: 16px;
+  background: var(--panel); border: 1px solid var(--accent); color: var(--accent);
+  border-radius: 10px; padding: 8px 14px; font-size: 13px; font-weight: 400;
+  text-decoration: none; backdrop-filter: blur(10px); box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+  transition: background 0.15s;
+}
+.edit-return:hover { background: rgba(214, 189, 155, 0.18); }
+.edit-return[hidden] { display: none; }
 .cesium-viewer-bottom { left: 8px !important; }  /* keep data attribution visible, tucked left */
 
 /* ---------- flight card ---------- */

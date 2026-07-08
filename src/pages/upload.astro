@@ -1,0 +1,61 @@
+---
+import "../styles/global.css";
+import "../styles/ingest.css";
+---
+
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Skylog — new flight</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Roboto:wght@100;300;400;500&display=swap" rel="stylesheet" />
+</head>
+<body>
+<main class="ingest">
+  <header>
+    <p class="eyebrow"><a href="/">← Skylog flights</a></p>
+    <h1>New flight</h1>
+    <p class="sub">Give it a title and drop your tracklog and photos. You'll set captions, timing, and details next.</p>
+  </header>
+
+  <!-- 1 · Title -->
+  <section class="step">
+    <h2><span class="idx">1</span>Title</h2>
+    <input type="text" id="fTitle" placeholder="Niederhorn → Interlaken" />
+  </section>
+
+  <!-- 2 · Tracklog -->
+  <section class="step">
+    <h2><span class="idx">2</span>Tracklog</h2>
+    <label class="drop" id="trackDrop">
+      <input type="file" id="trackInput" accept=".igc,.gpx" hidden />
+      <span id="trackHint">Drop an <b>IGC</b> or <b>GPX</b> file, or click to choose</span>
+    </label>
+    <p class="err" id="trackErr" hidden></p>
+  </section>
+
+  <!-- 3 · Photos -->
+  <section class="step">
+    <h2><span class="idx">3</span>Photos <span class="note" id="photoCount"></span></h2>
+    <label class="drop" id="photoDrop">
+      <input type="file" id="photoInput" accept="image/jpeg,image/png" multiple hidden />
+      <span>Drop <b>JPEG / PNG</b> photos, or click to choose</span>
+    </label>
+    <div class="thumbgrid" id="photoList"></div>
+  </section>
+
+  <div class="actions">
+    <span class="note" id="metaNote"></span>
+    <span class="spacer"></span>
+    <button id="continueBtn" class="primary">Continue to edit →</button>
+  </div>
+</main>
+
+<script>
+  import "../ingest/upload-page";
+</script>
+</body>
+</html>

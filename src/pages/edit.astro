@@ -1,0 +1,109 @@
+---
+import "../styles/global.css";
+import "../styles/ingest.css";
+
+// The "Save to disk" backdoor and loading existing flights are dev-only: this is
+// statically false in a production `astro build`, so the button never ships.
+const DEV = import.meta.env.DEV;
+---
+
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Skylog — edit flight</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Roboto:wght@100;300;400;500&display=swap" rel="stylesheet" />
+</head>
+<body>
+<main class="ingest">
+  <header>
+    <p class="eyebrow"><a href="/">← Skylog flights</a></p>
+    <h1>Edit flight</h1>
+    <p class="sub" id="sub">Adjust details, captions, and photo timing, then export the flight bundle.</p>
+  </header>
+
+  <!-- shown while no flight is loaded -->
+  <section class="step" id="loader">
+    <h2>Open a flight</h2>
+    <p class="note">Continue a draft from a recent upload, or open a <b>flight.json</b> bundle to edit.</p>
+    <div class="chips" id="draftList" style="margin-top:16px"></div>
+    <div class="actions">
+      <label class="drop" id="jsonDrop" style="min-height:80px;flex:1">
+        <input type="file" id="jsonInput" accept="application/json,.json" hidden />
+        <span>Drop a <b>flight.json</b>, or click to choose</span>
+      </label>
+    </div>
+    <p class="err" id="loadErr" hidden></p>
+  </section>
+
+  <!-- editor (hidden until a flight loads) -->
+  <div id="editor" hidden>
+    <section class="step">
+      <h2><span class="idx">1</span>Details</h2>
+      <div class="form">
+        <label>Title<input type="text" id="fTitle" /></label>
+        <label>Date<input type="date" id="fDate" /></label>
+        <label>Pilot<input type="text" id="fPilot" /></label>
+        <label>Glider<input type="text" id="fGlider" /></label>
+        <label>Site<input type="text" id="fSite" /></label>
+        <label class="wide">Description<textarea id="fDesc" rows="3"></textarea></label>
+      </div>
+      <div class="actions">
+        <label class="note">Default camera</label>
+        <div class="seg" id="camSeg" role="group" aria-label="Default camera">
+          <button data-cam="free">Free</button>
+          <button data-cam="follow">Follow</button>
+        </div>
+      </div>
+    </section>
+
+    <section class="step" id="photoStep">
+      <h2><span class="idx">2</span>Media <span class="note" id="photoCount"></span></h2>
+      <p class="note">Photos now — videos and annotations later. Select an item to place it on the track.</p>
+      <label class="drop" id="addPhotoDrop" style="min-height:80px;margin-top:14px">
+        <input type="file" id="addPhotoInput" accept="image/jpeg,image/png" multiple hidden />
+        <span>＋ Add photos — drop <b>JPEG / PNG</b> or click</span>
+      </label>
+      <div class="photos" id="photoList"></div>
+    </section>
+
+    <section class="step">
+      <h2><span class="idx">3</span>Preview</h2>
+      <p class="note">Open the flight in the 3D viewer to check the track and photo placement, then come back here to keep editing.</p>
+      <div class="actions">
+        <button id="saveBtn">Save draft</button>
+        {DEV && <button id="diskBtn" title="Write flight.json + media back to the flight's folder">Save to disk (dev)</button>}
+        <span class="spacer"></span>
+        <span class="note" id="status"></span>
+        <button id="viewBtn" class="primary">Open in viewer →</button>
+      </div>
+    </section>
+  </div>
+</main>
+
+<!-- bottom sheet: scrub a selected media item along the track -->
+<div class="scrub-sheet" id="scrubSheet" hidden>
+  <div class="scrub-inner">
+    <div class="scrub-head">
+      <div class="scrub-headtext">
+        <input class="scrub-title" id="scrubTitle" placeholder="Add a caption…" />
+        <div class="scrub-time" id="scrubTime"></div>
+      </div>
+      <button id="scrubClose" aria-label="Close">✕</button>
+    </div>
+    <div class="scrub-body">
+      <img class="scrub-photo" id="scrubPhoto" alt="Selected photo" title="Open full size" />
+      <canvas id="planCanvas" aria-label="Top-down track"></canvas>
+      <canvas id="altCanvas" aria-label="Altitude profile — drag to set the time"></canvas>
+    </div>
+  </div>
+</div>
+
+<script>
+  import "../ingest/edit-page";
+</script>
+</body>
+</html>

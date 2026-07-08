@@ -46,7 +46,6 @@ export const S = {
   PHOTOS: [] as Photo[],
   groups: [] as PhotoGroup[],
   T0: 0, DT: 1, TOTAL: 0,
-  bundleBase: "",
   flownM: 0, maxAlt: -Infinity, minAlt: Infinity, bestClimb: 0, W: 8,
 
   // lightbox
