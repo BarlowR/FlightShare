@@ -10,11 +10,11 @@ import { S } from "./state";
 import { reducedMotion, MARKER_ASPECT } from "./config";
 import { $, showToast, rampColor } from "./util";
 import { C, readColors } from "./colors";
-import { circleThumb, stackThumb } from "./markers";
+import { circleThumb, stackThumb, annotationPin } from "./markers";
 import { loadBundle } from "./bundle";
 import { frameFollow } from "./camera";
 import { onTick, drawProfile } from "./playback";
-import { openLightbox } from "./lightbox";
+import { openLightbox, openAnnotation } from "./lightbox";
 
 export async function initCesium(token: string) {
   Cesium.Ion.defaultAccessToken = token;
@@ -205,17 +205,48 @@ export async function initCesium(token: string) {
     (ent as any).__photoIndex = g.members[0];   // click opens the group's first photo
   });
 
+  /* text annotations: a note pin in the same style as the photo pins; clicking
+     opens the note in the lightbox. Icon is shared across all annotations. */
+  if (S.ANNOTATIONS.length) {
+    const annotIcon = annotationPin();
+    S.ANNOTATIONS.forEach((a, ai) => {
+      const px = 46;
+      const ent = viewer.entities.add({
+        position: Cesium.Cartesian3.fromDegrees(a.lon, a.lat, a.alt),
+        point: {
+          pixelSize: 7, color: Cesium.Color.fromCssColorString(C.marker),
+          outlineColor: Cesium.Color.fromCssColorString(C.markerInk), outlineWidth: 2,
+          eyeOffset: new Cesium.Cartesian3(0, 0, -30),
+        },
+        billboard: {
+          image: annotIcon,
+          width: px, height: Math.round(px * MARKER_ASPECT),
+          verticalOrigin: Cesium.VerticalOrigin.BOTTOM,
+          horizontalOrigin: Cesium.HorizontalOrigin.CENTER,
+          eyeOffset: new Cesium.Cartesian3(0, 0, -30),
+          scale: new Cesium.CallbackProperty(() => {
+            if (reducedMotion) return 1;
+            const t = Cesium.JulianDate.secondsDifference(clock.currentTime, clock.startTime);
+            return 1 + 0.35 * Math.max(0, 1 - Math.abs(t - a.tPos) / 14);
+          }, false),
+        },
+      });
+      (ent as any).__annotIndex = ai;   // click opens the annotation in the lightbox
+    });
+  }
+
   /* picking: open lightbox on marker click, pointer cursor on hover */
   const handler = new Cesium.ScreenSpaceEventHandler(viewer.scene.canvas);
   handler.setInputAction((m: any) => {
-    const picked = viewer.scene.pick(m.position);
-    const idx = picked && picked.id && picked.id.__photoIndex;
-    if (idx !== undefined) openLightbox(idx);
+    const id = viewer.scene.pick(m.position)?.id;
+    if (!id) return;
+    if (id.__photoIndex !== undefined) openLightbox(id.__photoIndex);
+    else if (id.__annotIndex !== undefined) openAnnotation(id.__annotIndex);
   }, Cesium.ScreenSpaceEventType.LEFT_CLICK);
   handler.setInputAction((m: any) => {
-    const picked = viewer.scene.pick(m.endPosition);
+    const id = viewer.scene.pick(m.endPosition)?.id;
     viewer.scene.canvas.style.cursor =
-      picked && picked.id && picked.id.__photoIndex !== undefined ? "pointer" : "default";
+      id && (id.__photoIndex !== undefined || id.__annotIndex !== undefined) ? "pointer" : "default";
   }, Cesium.ScreenSpaceEventType.MOUSE_MOVE);
 
   /* initial framing — follow is the default: mostly-overhead, north-up, ~2/3 of

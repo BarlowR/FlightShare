@@ -24,6 +24,12 @@ export interface Photo {
   group?: PhotoGroup;
 }
 
+export interface Annotation {
+  t: number; tPos: number;           // annotation time, and that time clamped into the flight window
+  lat: number; lon: number; alt: number;
+  text: string;
+}
+
 export const S = {
   // Cesium
   viewer: null as any,
@@ -44,10 +50,17 @@ export const S = {
   // track + media
   pts: [] as TrackPoint[],
   PHOTOS: [] as Photo[],
+  ANNOTATIONS: [] as Annotation[],
   groups: [] as PhotoGroup[],
   T0: 0, DT: 1, TOTAL: 0,
   flownM: 0, maxAlt: -Infinity, minAlt: Infinity, bestClimb: 0, W: 8,
 
   // lightbox
   lbIndex: 0,
+  lbAnnot: 0,
+  // photos + annotations merged into one time-ordered list; arrows/swipe/dots
+  // step through this so they read as a single sequence of stops on the flight
+  timeline: [] as { kind: "photo" | "note"; idx: number; t: number }[],
+  lbPos: 0,    // position of the open item within `timeline`
+  lbTPos: 0,   // track-time of whatever (photo or annotation) is currently open
 };

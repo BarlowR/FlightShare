@@ -7,16 +7,16 @@
 
 export type Media = {
   id: string;
-  type: "photo";        // v1 is photo-only; the field exists for future video
+  type: "photo" | "annotation";   // (video later — the field is the extension point)
   status: "ready";
   t: number;            // seconds from track.t0 (after sync)
   end: number | null;   // null for photos (video would set a range end)
   lat: number;
   lon: number;
   alt: number;
-  caption: string;
-  web: string;          // "media/<id>_web.jpg"
-  thumb: string;        // "media/<id>_thumb.jpg"
+  caption: string;      // photo caption, or the annotation's text
+  web?: string;         // "media/<id>_web.jpg" — photos only
+  thumb?: string;       // "media/<id>_thumb.jpg" — photos only
 };
 
 export type Bundle = {

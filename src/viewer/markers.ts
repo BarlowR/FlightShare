@@ -51,6 +51,28 @@ export function circleThumb(url: string, size = 128, ring = 8): Promise<HTMLCanv
   });
 }
 
+/** Annotation pin: the same magnifying-glass silhouette as a photo pin, but the
+ *  lens holds a dark note face with "text" lines instead of a thumbnail. */
+export function annotationPin(size = 128, ring = 8): HTMLCanvasElement {
+  const c = document.createElement("canvas");
+  const H = Math.round(size * MARKER_ASPECT);
+  c.width = size; c.height = H;
+  const g = c.getContext("2d")!;
+  const r = size / 2;
+  drawStem(g, size, H, r * 2 - ring - 2);          // tail emerges from the lens bottom
+  g.beginPath(); g.arc(r, r, r - ring, 0, 7); g.closePath();
+  g.fillStyle = C.cardBack; g.fill();               // dark note face
+  g.beginPath(); g.arc(r, r, r - ring / 2, 0, 7);
+  g.lineWidth = ring; g.strokeStyle = C.marker; g.stroke();
+  // three "text" lines (last one short), in the marker color
+  g.strokeStyle = C.marker; g.lineCap = "round"; g.lineWidth = size * 0.05;
+  const lx = r - size * 0.17, rx = r + size * 0.17;
+  [r - size * 0.13, r, r + size * 0.13].forEach((y, k) => {
+    g.beginPath(); g.moveTo(lx, y); g.lineTo(k === 2 ? r : rx, y); g.stroke();
+  });
+  return c;
+}
+
 /** Multiphoto pin: the top thumbnail lens with a card peeking behind it and a
  *  count badge, on a stem. */
 export function stackThumb(url: string, count: number, size = 128, ring = 8): Promise<HTMLCanvasElement | null> {

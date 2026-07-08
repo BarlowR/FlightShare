@@ -15,7 +15,11 @@ import { createScrubber, type Scrubber } from "./plots";
 
 const $ = (id: string): any => document.getElementById(id);
 
-type Item = { m: Media; baseT: number; caption: string; thumbUrl: string; webUrl: string; el?: HTMLElement };
+type Item = {
+  m: Media; baseT: number; caption: string; thumbUrl: string; webUrl: string;
+  committed?: boolean;   // false for a freshly-added item until it's Accepted
+  el?: HTMLElement;
+};
 
 let bundle: Bundle | null = null;
 let slug = "flight";
@@ -115,7 +119,7 @@ function loadBundle(b: Bundle, thumbFor: (path: string) => string) {
   $("fDesc").value = b.description || "";
   setCamera(b.settings?.cameraDefault || "follow");
 
-  items = b.media.map((m) => ({ m, baseT: m.t, caption: m.caption || "", thumbUrl: thumbFor(m.thumb), webUrl: thumbFor(m.web) }));
+  items = b.media.map((m) => ({ m, baseT: m.t, caption: m.caption || "", thumbUrl: thumbFor(m.thumb || ""), webUrl: thumbFor(m.web || ""), committed: true }));
   renderPhotos();
 }
 
@@ -132,16 +136,23 @@ function setCamera(cam: "free" | "follow") {
 
 let selected: Item | null = null;
 let scrubber: Scrubber | null = null;
+let pendingEdit: { baseT: number; caption: string } | null = null;   // snapshot for Reject
 
 function selectItem(it: Item) {
+  // switching to another item keeps the current one's edits (implicit accept)
+  if (selected && selected !== it) selected.committed = true;
   selected = it;
+  pendingEdit = { baseT: it.baseT, caption: it.caption };   // for Reject (revert)
   items.forEach((x) => x.el?.classList.toggle("sel", x === it));
 
+  $("scrubReject").textContent = it.committed ? "Revert" : "Discard";
   $("scrubTitle").value = it.caption;
+  $("scrubTitle").placeholder = it.m.type === "annotation" ? "Annotation text" : "Add a caption…";
   const photo = $("scrubPhoto");
   const src = it.webUrl || it.thumbUrl;
   if (src) { photo.src = src; photo.style.display = ""; } else photo.style.display = "none";
   photo.onclick = () => { if (src) window.open(src, "_blank"); };
+  $("scrubSheet").classList.toggle("no-photo", !src);   // annotations: no image, map goes full width
 
   const sheet = $("scrubSheet");
   sheet.hidden = false;
@@ -171,12 +182,27 @@ function updateSheetTime(it: Item) {
 
 function closeSheet() {
   scrubber?.destroy(); scrubber = null;
-  selected = null;
-  items.forEach((x) => x.el?.classList.remove("sel"));
+  selected = null; pendingEdit = null;
   $("scrubSheet").hidden = true;
   document.body.style.paddingBottom = "";
+  renderPhotos();   // reflect any new time order after scrubbing
 }
-$("scrubClose").addEventListener("click", closeSheet);
+
+// Accept: commit the edits (they're applied live) and close.
+$("scrubAccept").addEventListener("click", () => {
+  if (selected) selected.committed = true;
+  closeSheet();
+});
+
+// Reject: a never-accepted (freshly added) item is discarded entirely; an
+// existing item reverts to its time + caption from when the sheet was opened.
+$("scrubReject").addEventListener("click", () => {
+  const it = selected;
+  if (!it) { closeSheet(); return; }
+  if (!it.committed) { removeItem(it); return; }        // removeItem closes the sheet
+  if (pendingEdit) { it.baseT = pendingEdit.baseT; it.caption = pendingEdit.caption; }
+  closeSheet();
+});
 
 // the pop-out header edits the selected item's caption; keep the row field in sync
 $("scrubTitle").addEventListener("input", (e: any) => {
@@ -199,6 +225,24 @@ $("addPhotoInput").addEventListener("change", (e: any) => { addPhotos(Array.from
   });
 }
 
+// Add a text annotation: a media item with no image, placed at mid-flight and
+// opened straight into the scrubber so you can position it and type its text.
+$("addAnnotation").addEventListener("click", () => {
+  if (!bundle) return;
+  const track = bundle.track;
+  const t = Math.round(track.points[track.points.length - 1][0] / 2);
+  const pos = interpAt(track, t);
+  const id = nextMediaId();
+  const m: Media = {
+    id, type: "annotation", status: "ready", t, end: null,
+    lat: round(pos.lat, 6), lon: round(pos.lon, 6), alt: Math.round(pos.alt), caption: "",
+  };
+  const it: Item = { m, baseT: t, caption: "", thumbUrl: "", webUrl: "", committed: false };
+  items.push(it);
+  renderPhotos();
+  selectItem(it);
+});
+
 /** Next unused "m<n>" id, so added photos don't collide with existing ones. */
 function nextMediaId(): string {
   let max = 0;
@@ -220,7 +264,9 @@ async function addPhotos(files: File[]) {
       lat: 0, lon: 0, alt: 0, caption: "",
       web: `media/${id}_web.jpg`, thumb: `media/${id}_thumb.jpg`,
     };
-    const it: Item = { m, baseT: m.t, caption: "", thumbUrl: "", webUrl: "" };
+    // dropped photos are real data → committed (Reject reverts edits, ✕ removes);
+    // only empty annotations start uncommitted (Reject discards them).
+    const it: Item = { m, baseT: m.t, caption: "", thumbUrl: "", webUrl: "", committed: true };
     items.push(it);
     renderPhotos();                                  // show a busy row immediately
     try {
@@ -245,18 +291,23 @@ async function addPhotos(files: File[]) {
 }
 
 function renderPhotos() {
+  sortItems();
   $("photoCount").textContent = items.length ? `${items.length}` : "none";
   const list = $("photoList");
   list.innerHTML = "";
   for (const it of items) {
+    const annot = it.m.type === "annotation";
     const oob = isOutOfBounds(it) && !acked.has(it.m.id);
     const row = document.createElement("div");
-    row.className = "photo" + (it.thumbUrl ? "" : " busy") + (it === selected ? " sel" : "") + (oob ? " warn" : "");
+    row.className = "photo" + (annot || it.thumbUrl ? "" : " busy") + (it === selected ? " sel" : "") + (oob ? " warn" : "");
+    const thumbHtml = annot
+      ? `<div class="thumb annot" aria-hidden="true">✎</div>`
+      : `<img class="thumb" alt="" ${it.thumbUrl ? `src="${it.thumbUrl}"` : ""} />`;
     row.innerHTML = `
-      <img class="thumb" alt="" ${it.thumbUrl ? `src="${it.thumbUrl}"` : ""} />
+      ${thumbHtml}
       <div class="body">
         <span class="tag">${escapeHtml(it.m.type || "media")}</span>
-        <input type="text" placeholder="Caption" value="${escapeAttr(it.caption)}" />
+        <input type="text" placeholder="${annot ? "Annotation text" : "Caption"}" value="${escapeAttr(it.caption)}" />
         <div class="badge"></div>
         ${oob ? `<div class="oob">⚠ This photo's time falls outside the flight. Are you sure this photo is correct?
           <button class="oob-keep">Keep it</button><button class="oob-rm">Remove</button></div>` : ""}
@@ -292,6 +343,11 @@ const effT = (it: Item) => {
   return Math.max(0, Math.min(last, it.baseT));
 };
 
+/** Order photos and annotations by their time along the track (id breaks ties). */
+function sortItems() {
+  items.sort((a, b) => effT(a) - effT(b) || a.m.id.localeCompare(b.m.id, undefined, { numeric: true }));
+}
+
 /** True when a photo's capture time lands outside the tracklog window — i.e. it
  *  was clamped to an endpoint and is probably from a different flight/time. */
 function isOutOfBounds(it: Item): boolean {
@@ -317,6 +373,7 @@ function syncBadges() {
 /** Rebuild the Bundle from the current form + photo edits. */
 function assemble(): Bundle {
   const b = bundle!;
+  sortItems();
   const media: Media[] = items.map((it) => {
     const t = effT(it);
     const pos = interpAt(b.track, t);
@@ -401,7 +458,7 @@ async function writeFile(dir: any, name: string, data: Blob) {
 /** Blobs still referenced by the assembled bundle (drops removed photos). */
 function keptBlobs(b: Bundle): Record<string, Blob> {
   const wanted = new Set<string>();
-  b.media.forEach((m) => { wanted.add(m.web); wanted.add(m.thumb); });
+  b.media.forEach((m) => { if (m.web) wanted.add(m.web); if (m.thumb) wanted.add(m.thumb); });
   return Object.fromEntries(Object.entries(blobs).filter(([p]) => wanted.has(p)));
 }
 

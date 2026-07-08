@@ -86,6 +86,21 @@ export async function loadBundle() {
       thumb: resolveMedia(m.thumb || m.web),
     }));
 
+  /* text annotations — a labeled point on the track, no image */
+  S.ANNOTATIONS = b.media
+    .filter((m: any) => m.type === "annotation")
+    .map((m: any) => ({
+      t: m.t, tPos: Math.max(0, Math.min(S.TOTAL, m.t)),
+      lat: m.lat, lon: m.lon, alt: m.alt, text: m.caption || "",
+    }));
+
+  /* merge photos + annotations into one time-ordered list so the lightbox
+     arrows/swipe/dots step through them as a single sequence of stops */
+  S.timeline = [
+    ...S.PHOTOS.map((p, idx) => ({ kind: "photo" as const, idx, t: p.t })),
+    ...S.ANNOTATIONS.map((a, idx) => ({ kind: "note" as const, idx, t: a.t })),
+  ].sort((x, y) => x.t - y.t);
+
   /* cluster photos taken at the same spot on the track (within GROUP_DIST_M),
      so co-located shots collapse into one multiphoto marker */
   S.groups = [];

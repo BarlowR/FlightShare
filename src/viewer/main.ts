@@ -8,7 +8,7 @@ import { ION_TOKEN } from "./config";
 import { $ } from "./util";
 import { setPlaying, initProfile } from "./playback";
 import { setCameraMode } from "./camera";
-import { openLightbox, closeLightbox, initLightboxGestures } from "./lightbox";
+import { closeLightbox, initLightboxGestures, stepLightbox } from "./lightbox";
 import { initCesium } from "./scene";
 
 /* ---- UI wiring ---- */
@@ -49,8 +49,8 @@ initLightboxGestures();   // swipe left/right on the photo → next/prev
 document.addEventListener("keydown", (e: KeyboardEvent) => {
   if (!$("lightbox").classList.contains("open")) return;
   if (e.key === "Escape") closeLightbox();
-  if (e.key === "ArrowLeft") openLightbox(S.lbIndex - 1);
-  if (e.key === "ArrowRight") openLightbox(S.lbIndex + 1);
+  if (e.key === "ArrowLeft") stepLightbox(-1);
+  if (e.key === "ArrowRight") stepLightbox(1);
 });
 
 /* ---- startup ---- the ion token is baked in (config.ts), so the viewer loads

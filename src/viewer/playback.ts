@@ -38,11 +38,11 @@ export function onTick() {
   drawProfile(t);
   updateCompass();
 
-  /* close the photo panel once the flight is scrubbed/played away from it —
-     but not during a photo-to-photo transition, which sweeps t on purpose */
-  if (!S.scrubAnim && $("lightbox").classList.contains("open")) {
-    const ph = S.PHOTOS[S.lbIndex];
-    if (ph && Math.abs(t - ph.tPos) > 15) closeLightbox();
+  /* close the panel (photo or annotation) once the flight is scrubbed/played
+     away from the open item — but not during a transition that sweeps t on
+     purpose. lbTPos tracks whichever media is currently open. */
+  if (!S.scrubAnim && $("lightbox").classList.contains("open") && Math.abs(t - S.lbTPos) > 15) {
+    closeLightbox();
   }
 }
 

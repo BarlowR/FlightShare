@@ -1,4 +1,8 @@
 :root {
+  /* let height:auto animate (used by the lightbox photo↔note resize); browsers
+     without support just snap, which is the old behaviour */
+  interpolate-size: allow-keywords;
+
   /* ---- palette adapted from barlowr.com: warm near-black + cream + muted purple.
      The site is light; the viewer lives over a 3D globe, so this is a dark
      rendering of the same palette (cream ink on warm-dark, purple accent). ---- */
@@ -153,20 +157,45 @@ button:focus-visible, input:focus-visible { outline: 2px solid var(--accent); ou
    Occupies the right half; the globe stays live on the left, and the
    bottom flight strip stays clear so you can scrub while a photo is open. */
 .lightbox {
-  position: fixed; top: 16px; right: 16px; bottom: 108px; z-index: 18;
+  position: fixed; top: 16px; right: 16px; z-index: 18;
   width: min(46vw, 640px);
+  height: auto;                  /* size to the photo/note so the whole image shows */
+  max-height: calc(100vh - 124px);   /* but never past the flight strip; then it scales down */
   background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius);
   backdrop-filter: blur(10px); padding: 14px;
   display: none; flex-direction: column;
+  /* smoothly resize when switching between photos of different shapes, or
+     between a photo and a note, so the corner panel doesn't jump */
+  transition: height 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 .lightbox.open { display: flex; }
-.lb-frame { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+.lb-frame { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; }
 .lb-frame img {
-  flex: 1; min-height: 0; width: 100%; object-fit: cover;   /* fill the frame — no black letterbox bars */
+  /* show the whole photo: width fills the panel, height follows the image's
+     aspect ratio (the panel grows to match). Tall photos are capped by the
+     panel's max-height and scale down to fit rather than overflowing. */
+  width: 100%; height: auto; max-height: 100%; object-fit: contain;
   border-radius: var(--radius); border: 1px solid var(--line);
   display: block; box-shadow: 0 24px 80px rgba(0, 0, 0, 0.6);
   touch-action: pan-y pinch-zoom;   /* let horizontal swipes drive prev/next */
 }
+/* annotation note text */
+.lb-note {
+  width: 100%; overflow: auto;
+  font-size: 17px; font-weight: 300; line-height: 1.5; color: var(--ink);
+  white-space: pre-wrap;
+}
+
+/* note mode: same corner and same width as the photo panel (so navigating
+   between the two never shifts sideways), but only as tall as its text. Long
+   notes grow to a cap, then scroll. */
+.lightbox.note {
+  max-height: calc(100vh - 150px);   /* height:auto (from .lightbox) shrinks it to the note */
+}
+.lightbox.note .lb-frame { flex: 0 1 auto; min-height: 0; }
+.lightbox.note .lb-note { flex: 0 1 auto; max-height: 42vh; }
+.lightbox.note .lb-bar { margin-top: 10px; }
+
 /* pagination dots: one per photo in the flight, swipe or tap to navigate */
 .lb-dots { display: flex; justify-content: center; gap: 7px; margin-top: 10px; flex: 0 0 auto; flex-wrap: wrap; }
 .lb-dots button {
@@ -175,6 +204,9 @@ button:focus-visible, input:focus-visible { outline: 2px solid var(--accent); ou
 }
 .lb-dots button:hover { background: var(--muted); }
 .lb-dots button[aria-current="true"] { background: var(--accent); transform: scale(1.35); }
+/* annotation stops read as squares so the merged strip shows the two kinds apart */
+.lb-dots button.note { border-radius: 2px; transform: rotate(45deg); }
+.lb-dots button.note[aria-current="true"] { transform: rotate(45deg) scale(1.35); }
 /* group strip: circular thumbnails of the photos taken at this spot */
 .lb-strip { display: none; gap: 8px; margin-top: 10px; overflow-x: auto; padding-bottom: 2px; flex: 0 0 auto; }
 .lb-thumb {
@@ -221,13 +253,14 @@ button:focus-visible, input:focus-visible { outline: 2px solid var(--accent); ou
      animate (transform can't animate from display:none). */
   .lightbox {
     display: flex; left: 0; right: 0; top: 0; bottom: auto; width: auto;
-    height: 58vh; border-radius: 0 0 var(--radius) var(--radius);
+    height: auto; max-height: 72vh; border-radius: 0 0 var(--radius) var(--radius);
     padding: max(12px, env(safe-area-inset-top)) 12px 12px;
     transform: scaleY(0); transform-origin: top; opacity: 0; pointer-events: none;
-    transition: transform 0.26s ease, opacity 0.2s ease;
+    transition: transform 0.26s ease, opacity 0.2s ease, height 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
   }
   .lightbox.open { transform: scaleY(1); opacity: 1; pointer-events: auto; }
+  .lightbox.note { max-height: 55vh; width: auto; }   /* note folds only as tall as its text */
   .lb-close { top: max(8px, env(safe-area-inset-top)); right: 8px; }
   .lb-dots button { width: 9px; height: 9px; }   /* bigger tap targets on mobile */
 }
@@ -255,6 +288,7 @@ button:focus-visible, input:focus-visible { outline: 2px solid var(--accent); ou
 
 @media (prefers-reduced-motion: reduce) {
   .loading .ring { animation: none; }
+  .lightbox { transition: none; }   /* snap between photo/note sizes */
 }
 
 @media (max-width: 880px) {

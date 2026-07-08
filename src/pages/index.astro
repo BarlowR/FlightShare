@@ -29,7 +29,8 @@ for (const slug of slugs) {
     const pts: number[][] = b.track?.points ?? [];
     const last = pts.length ? pts[pts.length - 1][0] : 0;
     const maxAlt = pts.reduce((m, p) => Math.max(m, p[3]), 0);
-    const first = (b.media ?? [])[0];
+    const photoMedia = (b.media ?? []).filter((m: any) => m.type === "photo");
+    const first = photoMedia[0];
     flights.push({
       slug,
       title: b.title || slug,
@@ -37,7 +38,7 @@ for (const slug of slugs) {
       pilot: b.pilot, glider: b.glider, site: b.site,
       durationMin: Math.round(last / 60),
       maxAlt: Math.round(maxAlt),
-      photos: (b.media ?? []).length,
+      photos: photoMedia.length,
       thumb: first ? `/flights/${slug}/${first.thumb || first.web}` : null,
     });
   } catch (e: any) {

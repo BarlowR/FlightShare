@@ -67,6 +67,9 @@ const DEV = import.meta.env.DEV;
         <input type="file" id="addPhotoInput" accept="image/jpeg,image/png" multiple hidden />
         <span>＋ Add photos — drop <b>JPEG / PNG</b> or click</span>
       </label>
+      <div class="add-row">
+        <button id="addAnnotation">＋ Add text annotation</button>
+      </div>
       <div class="photos" id="photoList"></div>
     </section>
 
@@ -92,12 +95,16 @@ const DEV = import.meta.env.DEV;
         <input class="scrub-title" id="scrubTitle" placeholder="Add a caption…" />
         <div class="scrub-time" id="scrubTime"></div>
       </div>
-      <button id="scrubClose" aria-label="Close">✕</button>
     </div>
     <div class="scrub-body">
       <img class="scrub-photo" id="scrubPhoto" alt="Selected photo" title="Open full size" />
       <canvas id="planCanvas" aria-label="Top-down track"></canvas>
       <canvas id="altCanvas" aria-label="Altitude profile — drag to set the time"></canvas>
+    </div>
+    <div class="scrub-foot">
+      <button id="scrubReject">Discard</button>
+      <span class="spacer"></span>
+      <button id="scrubAccept" class="primary">✓ Accept</button>
     </div>
   </div>
 </div>
