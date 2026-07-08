@@ -1,6 +1,7 @@
 ---
 import "../styles/global.css";
 import "../styles/ingest.css";
+import NotifyModal from "../components/NotifyModal.astro";
 
 // The "Save to disk" backdoor and loading existing flights are dev-only: this is
 // statically false in a production `astro build`, so the button never ships.
@@ -74,15 +75,12 @@ const DEV = import.meta.env.DEV;
     </section>
 
     <section class="step">
-      <h2><span class="idx">3</span>Preview</h2>
-      <p class="note">Open the flight in the 3D viewer to check the track and photo placement, then come back here to keep editing.</p>
-      <div class="actions">
-        <button id="saveBtn">Save draft</button>
-        {DEV && <button id="diskBtn" title="Write flight.json + media back to the flight's folder">Save to disk (dev)</button>}
-        <span class="spacer"></span>
-        <span class="note" id="status"></span>
-        <button id="viewBtn" class="primary">Open in viewer →</button>
+      <div class="big-actions">
+        <button type="button" class="primary big-btn" data-notify>Save</button>
+        <button id="viewBtn" class="big-btn">Open in viewer →</button>
+        {DEV && <button id="diskBtn" class="big-btn" title="Write flight.json + media back to the flight's folder">Save to dev</button>}
       </div>
+      <p class="note status" id="status"></p>
     </section>
   </div>
 </main>
@@ -92,7 +90,7 @@ const DEV = import.meta.env.DEV;
   <div class="scrub-inner">
     <div class="scrub-head">
       <div class="scrub-headtext">
-        <input class="scrub-title" id="scrubTitle" placeholder="Add a caption…" />
+        <textarea class="scrub-title" id="scrubTitle" rows="1" placeholder="Add a caption…"></textarea>
         <div class="scrub-time" id="scrubTime"></div>
       </div>
     </div>
@@ -108,6 +106,8 @@ const DEV = import.meta.env.DEV;
     </div>
   </div>
 </div>
+
+<NotifyModal />
 
 <script>
   import "../ingest/edit-page";

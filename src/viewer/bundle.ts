@@ -35,22 +35,43 @@ async function loadSource(): Promise<{ b: any; resolveMedia: (p: string) => stri
   return { b: await res.json(), resolveMedia: (p: string) => encodeURI(base + p) };
 }
 
-/** Reveal the floating "back to editing" button and keep it pinned just below
- *  the flight card as that card resizes (collapse toggle, description more/less,
- *  font load) or the window changes. */
+/** Keep the floating corner buttons stacked just below the flight card: the
+ *  "Back to editing" pill (drafts only) on top, then the "Save" pill beneath it.
+ *  Re-runs as the card resizes (collapse toggle, description more/less, font
+ *  load) or the window changes. */
+function placeCornerStack() {
+  const card = $("flightCard");
+  if (!card) return;
+  const back = $("editReturn"), save = $("saveFab");
+  const r = card.getBoundingClientRect();
+  let top = r.bottom + 8;
+  if (back && !back.hidden) {
+    back.style.top = `${top}px`;
+    back.style.left = `${r.left}px`;
+    top += back.offsetHeight + 8;
+  }
+  if (save) {
+    save.style.top = `${top}px`;
+    save.style.left = `${r.left}px`;
+  }
+}
+
+/** Wire the corner stack to follow the card (call once the card exists). */
+function initCornerStack() {
+  const card = $("flightCard");
+  if (!card) return;
+  placeCornerStack();
+  new ResizeObserver(placeCornerStack).observe(card);
+  window.addEventListener("resize", placeCornerStack);
+}
+
+/** Reveal the "back to editing" button (draft preview only), then restack. */
 function showEditReturn(slug: string) {
-  const back = $("editReturn"), card = $("flightCard");
-  if (!back || !card) return;
+  const back = $("editReturn");
+  if (!back) return;
   back.setAttribute("href", `/edit?draft=${encodeURIComponent(slug)}`);
   back.hidden = false;
-  const place = () => {
-    const r = card.getBoundingClientRect();
-    back.style.top = `${r.bottom + 8}px`;
-    back.style.left = `${r.left}px`;
-  };
-  place();
-  new ResizeObserver(place).observe(card);
-  window.addEventListener("resize", place);
+  placeCornerStack();
 }
 
 export async function loadBundle() {
@@ -58,7 +79,14 @@ export async function loadBundle() {
 
   S.T0 = Date.parse(b.track.t0);
   S.DT = b.track.dt || 1;
-  S.pts = b.track.points.map(([t, lat, lon, alt]: number[]) => ({ t, lat, lon, alt }));
+  // a GNSS fix that dropped its altitude leaves a point with no/NaN alt; carry
+  // the last good value forward so one gap doesn't poison maxAlt (→ NaN) and
+  // blank the altitude-colored track.
+  let lastAlt = 0;
+  S.pts = b.track.points.map(([t, lat, lon, alt]: number[]) => {
+    if (Number.isFinite(alt)) lastAlt = alt;
+    return { t, lat, lon, alt: lastAlt };
+  });
   S.TOTAL = S.pts[S.pts.length - 1].t;
 
   /* headline stats — recorded GNSS altitudes are real, so no grounding hack */
@@ -145,4 +173,5 @@ export async function loadBundle() {
   }
 
   buildSpeedControls();   // speed presets scaled to this flight's length
+  initCornerStack();      // stack the Save (and Back-to-editing) pills under the card
 }

@@ -1,5 +1,6 @@
 ---
 import "../styles/global.css";
+import NotifyModal from "../components/NotifyModal.astro";
 ---
 
 <!doctype html>
@@ -49,6 +50,10 @@ window.__cesiumReady = new Promise((resolve, reject) => {
 <body>
 
 <div id="cesiumContainer"></div>
+
+<!-- "Save" CTA — styled like (and stacked under) the Back-to-editing pill;
+     positioned in bundle.ts. Opens the in-development / notify popup. -->
+<button class="save-fab" id="saveFab" type="button" data-notify>Save</button>
 
 <!-- Flight card — a header on mobile; everything below the title collapses -->
 <aside class="flight-card collapsed" id="flightCard" aria-label="Flight information">
@@ -162,6 +167,8 @@ window.__cesiumReady = new Promise((resolve, reject) => {
     <p class="gate-err" id="gateErr"></p>
   </div>
 </div>
+
+<NotifyModal />
 
 <!-- Viewer entry (bundled by Astro/Vite from the TypeScript modules) -->
 <script>

@@ -168,6 +168,7 @@ function selectItem(it: Item) {
     syncBadges();
   }, origTime);
   requestAnimationFrame(() => {
+    autosizeTitle();   // fit the box to the existing text now the sheet is visible
     scrubber?.relayout();
     document.body.style.paddingBottom = sheet.offsetHeight + "px";   // keep content clear of the sheet
   });
@@ -204,8 +205,16 @@ $("scrubReject").addEventListener("click", () => {
   closeSheet();
 });
 
+// grow the annotation/caption textarea to fit its text (single row → multiline)
+function autosizeTitle() {
+  const ta = $("scrubTitle");
+  ta.style.height = "auto";
+  ta.style.height = ta.scrollHeight + "px";
+}
+
 // the pop-out header edits the selected item's caption; keep the row field in sync
 $("scrubTitle").addEventListener("input", (e: any) => {
+  autosizeTitle();
   if (!selected) return;
   selected.caption = e.target.value;
   const rowInput = selected.el?.querySelector("input") as HTMLInputElement | undefined;
@@ -391,17 +400,6 @@ function assemble(): Bundle {
     settings: { ...b.settings },
   };
 }
-
-$("saveBtn").addEventListener("click", async () => {
-  const b = assemble();
-  const keep = keptBlobs(b);
-  try {
-    await saveDraft({ slug, updated: Date.now(), bundle: b, blobs: keep, photoTimes });
-    bundle = b;   // edits are now the new baseline
-    items.forEach((it) => (it.baseT = it.m.t = b.media.find((m) => m.id === it.m.id)!.t));
-    $("status").textContent = "Draft saved";
-  } catch (e: any) { $("status").textContent = "Save failed: " + e.message; }
-});
 
 // Save the current edits, then open the flight in the 3D viewer. The viewer
 // loads the draft (bundle + photo blobs) straight from IndexedDB by slug.

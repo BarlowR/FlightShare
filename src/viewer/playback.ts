@@ -137,13 +137,14 @@ export function drawProfile(t: number) {
   ctx.lineTo(cw, ch); ctx.lineTo(0, ch); ctx.closePath();
   ctx.fillStyle = "rgba(111,183,255,0.14)"; ctx.fill();
 
-  /* photo markers */
-  for (const ph of S.PHOTOS) {
-    const x = X(ph.tPos), y = Y(ph.alt);
-    ctx.beginPath(); ctx.arc(x, y, 4.4, 0, 7);
+  /* photo + annotation markers (annotations marked the same as photos) */
+  const marker = (tPos: number, alt: number) => {
+    ctx.beginPath(); ctx.arc(X(tPos), Y(alt), 4.4, 0, 7);
     ctx.fillStyle = C.marker; ctx.fill();
     ctx.lineWidth = 1.6; ctx.strokeStyle = "#0e141b"; ctx.stroke();
-  }
+  };
+  for (const ph of S.PHOTOS) marker(ph.tPos, ph.alt);
+  for (const a of S.ANNOTATIONS) marker(a.tPos, a.alt);
 
   /* playhead */
   const x = X(t);

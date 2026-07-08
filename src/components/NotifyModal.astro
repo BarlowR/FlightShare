@@ -1,0 +1,122 @@
+---
+/**
+ * "In development" popup shared by the editor and the flight preview. Any button
+ * with a `data-notify` attribute opens it; it explains that saving/sharing isn't
+ * live yet and collects an email for launch updates.
+ *
+ * Email delivery: set NOTIFY_ENDPOINT (below, in the script) to a form backend
+ * (Formspree, Buttondown, a Worker, …). Until then submissions are kept in
+ * localStorage so nothing is lost and the flow is fully testable.
+ */
+---
+
+<div class="notify-backdrop" id="notifyModal" hidden>
+  <div class="notify-card" role="dialog" aria-modal="true" aria-labelledby="notifyTitle">
+    <button class="notify-close" data-notify-close aria-label="Close">✕</button>
+    <h2 id="notifyTitle">Saving is on the way</h2>
+    <p>Skylog is still in development — saving and sharing your own flights isn’t live
+       yet. Leave your email and we’ll let you know the moment it is.</p>
+    <form class="notify-form" id="notifyForm">
+      <input type="email" id="notifyEmail" required placeholder="you@example.com"
+             autocomplete="email" aria-label="Email address" />
+      <button type="submit">Keep me posted</button>
+    </form>
+    <p class="notify-msg" id="notifyMsg" hidden></p>
+  </div>
+</div>
+
+<style>
+  .notify-backdrop {
+    position: fixed; inset: 0; z-index: 50;
+    display: flex; align-items: center; justify-content: center; padding: 20px;
+    background: rgba(10, 6, 6, 0.6); backdrop-filter: blur(5px);
+  }
+  .notify-backdrop[hidden] { display: none; }
+  .notify-card {
+    position: relative; width: min(420px, 100%);
+    background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius);
+    padding: 28px; box-shadow: 0 30px 90px rgba(0, 0, 0, 0.6);
+  }
+  .notify-card h2 {
+    font-family: var(--font-ui); font-size: 20px; font-weight: 300;
+    color: var(--ink); margin: 0 0 10px;
+  }
+  .notify-card p {
+    font-family: var(--font-ui); color: var(--muted); font-size: 14px;
+    font-weight: 300; line-height: 1.55; margin: 0 0 18px;
+  }
+  .notify-close {
+    position: absolute; top: 12px; right: 12px;
+    background: transparent; border: 0; color: var(--muted);
+    font-size: 15px; line-height: 1; cursor: pointer; padding: 6px;
+  }
+  .notify-close:hover { color: var(--accent); }
+  .notify-form { display: flex; flex-direction: column; gap: 10px; }
+  .notify-form input {
+    font-family: var(--font-ui); font-size: 14px; color: var(--ink);
+    background: var(--panel-soft); border: 1px solid var(--line);
+    border-radius: 9px; padding: 11px 12px; width: 100%;
+  }
+  .notify-form input:focus { outline: none; border-color: var(--accent); }
+  .notify-form button {
+    font-family: var(--font-ui); font-size: 15px; font-weight: 400; cursor: pointer;
+    color: var(--accent); background: rgba(214, 189, 155, 0.14);
+    border: 1px solid var(--accent); border-radius: 9px; padding: 12px;
+    transition: background 0.15s;
+  }
+  .notify-form button:hover { background: rgba(214, 189, 155, 0.24); }
+  .notify-msg { font-family: var(--font-ui); font-size: 14px; color: var(--accent); margin: 4px 0 0; }
+</style>
+
+<script>
+  // point this at a real form backend to actually receive addresses; empty ⇒
+  // stash locally so the flow still works end-to-end during development
+  const NOTIFY_ENDPOINT = "";
+
+  const modal = document.getElementById("notifyModal") as HTMLElement;
+  const form = document.getElementById("notifyForm") as HTMLFormElement;
+  const email = document.getElementById("notifyEmail") as HTMLInputElement;
+  const msg = document.getElementById("notifyMsg") as HTMLElement;
+
+  const open = () => {
+    form.hidden = false; msg.hidden = true; form.reset();
+    modal.hidden = false;
+    setTimeout(() => email.focus(), 40);
+  };
+  const close = () => { modal.hidden = true; };
+
+  document.addEventListener("click", (e) => {
+    const t = e.target as HTMLElement;
+    if (t.closest("[data-notify]")) { e.preventDefault(); open(); }
+    else if (t.closest("[data-notify-close]") || t === modal) close();
+  });
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape" && !modal.hidden) close();
+  });
+
+  form.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const addr = email.value.trim();
+    if (!addr) return;
+    try {
+      if (NOTIFY_ENDPOINT) {
+        await fetch(NOTIFY_ENDPOINT, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ email: addr }),
+        });
+      } else {
+        const key = "skylog:notify-list";
+        const list: string[] = JSON.parse(localStorage.getItem(key) || "[]");
+        if (!list.includes(addr)) list.push(addr);
+        localStorage.setItem(key, JSON.stringify(list));
+      }
+      form.hidden = true;
+      msg.hidden = false;
+      msg.textContent = "Thanks — you’re on the list. We’ll be in touch.";
+    } catch {
+      msg.hidden = false;
+      msg.textContent = "Hmm, that didn’t go through. Please try again later.";
+    }
+  });
+</script>

@@ -57,6 +57,17 @@ body { font-family: var(--font-ui); color: var(--ink); font-weight: 300; }
 }
 .edit-return:hover { background: rgba(214, 189, 155, 0.18); }
 .edit-return[hidden] { display: none; }
+
+/* "Save" CTA — same pill as .edit-return, stacked just beneath it. Its top/left
+   are set in JS (placeCornerStack); these are the pre-position defaults. */
+.save-fab {
+  position: fixed; z-index: 6; top: 64px; left: 16px;
+  background: var(--panel); border: 1px solid var(--accent); color: var(--accent);
+  border-radius: 10px; padding: 8px 14px; font-family: var(--font-ui); font-size: 13px; font-weight: 400;
+  cursor: pointer; backdrop-filter: blur(10px); box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+  transition: background 0.15s;
+}
+.save-fab:hover { background: rgba(214, 189, 155, 0.18); }
 .cesium-viewer-bottom { left: 8px !important; }  /* keep data attribution visible, tucked left */
 
 /* ---------- flight card ---------- */

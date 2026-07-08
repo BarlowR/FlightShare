@@ -131,7 +131,12 @@ export async function initCesium(token: string) {
         vertexFormat: Cesium.PolylineColorAppearance.VERTEX_FORMAT,
       }),
     }),
-    appearance: new Cesium.PolylineColorAppearance({ translucent: false }),  // opaque → writes depth
+    appearance: new Cesium.PolylineColorAppearance({
+      translucent: false,
+      // draw the track over the terrain even where a GPS fix sits slightly below
+      // the surface, instead of letting terrain occlude it (depthTest disabled)
+      renderState: { depthTest: { enabled: false } },
+    }),
     asynchronous: false,
   }));
 
@@ -168,6 +173,9 @@ export async function initCesium(token: string) {
     point: {
       pixelSize: 11, color: Cesium.Color.fromCssColorString(C.marker),
       outlineColor: Cesium.Color.fromCssColorString(C.markerInk), outlineWidth: 2.5,
+      // always draw the glider over the terrain, even where a GPS fix dips
+      // slightly below the surface, instead of being occluded by it
+      disableDepthTestDistance: Number.POSITIVE_INFINITY,
     },
   });
 

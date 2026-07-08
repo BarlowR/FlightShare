@@ -73,14 +73,7 @@ const DEV = import.meta.env.DEV;
 </style>
 <style>
   .wrap { max-width: 1080px; margin: 0 auto; padding: 48px 24px 64px; }
-  header { margin-bottom: 28px; display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; }
-  .new-flight {
-    flex: 0 0 auto; text-decoration: none; font-size: 13px; font-weight: 400;
-    color: var(--accent); background: rgba(214, 189, 155, 0.14);
-    border: 1px solid var(--accent); border-radius: 9px; padding: 8px 14px;
-    transition: background 0.15s;
-  }
-  .new-flight:hover { background: rgba(214, 189, 155, 0.24); }
+  header { margin-bottom: 28px; }
   .eyebrow { font-family: var(--font-data); font-size: 11px; letter-spacing: 0.22em; color: var(--accent); text-transform: uppercase; margin: 0 0 8px; }
   h1 { font-size: var(--fs-title); font-weight: 100; margin: 0 0 6px; letter-spacing: 0.01em; }
   .sub { color: var(--muted); font-size: 14px; margin: 0; font-weight: 300; }
@@ -92,6 +85,14 @@ const DEV = import.meta.env.DEV;
     overflow: hidden; transition: border-color 0.15s, transform 0.15s;
   }
   .card:hover { border-color: var(--accent); transform: translateY(-2px); }
+  /* "add" tile: same card shape/hover as a flight, dashed accent to read as an action */
+  .card-add {
+    display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px;
+    min-height: 232px; border-style: dashed; border-color: var(--accent);
+    color: var(--accent); font-size: 15px; font-weight: 300;
+  }
+  .card-add .plus { font-size: 34px; font-weight: 100; line-height: 1; }
+  .card-add:hover { background: rgba(214, 189, 155, 0.08); }
   .card-wrap { position: relative; }
   /* dev-only edit affordance (the element is only emitted under `astro dev`) */
   .card-edit {
@@ -122,14 +123,14 @@ const DEV = import.meta.env.DEV;
       <h1>Flights</h1>
       <p class="sub">Pick a flight to play back in 3D.</p>
     </div>
-    <a class="new-flight" href="/upload">+ New flight</a>
   </header>
 
-  {flights.length === 0 ? (
-    <div class="empty">No flights found. Add a bundle at <code>public/flights/&lt;slug&gt;/flight.json</code>.</div>
-  ) : (
-    <div class="grid">
-      {flights.map((f) => (
+  <div class="grid">
+    <a class="card card-add" href="/upload">
+      <span class="plus">+</span>
+      <span>Add Your Flight</span>
+    </a>
+    {flights.map((f) => (
         <div class="card-wrap">
           <a class="card" href={`/view?flight=${f.slug}`}>
             <div class="thumb" style={f.thumb ? `background-image:url('${f.thumb}')` : ""}></div>
@@ -146,7 +147,10 @@ const DEV = import.meta.env.DEV;
           {DEV && <a class="card-edit" href={`/edit?flight=${f.slug}`}>Edit</a>}
         </div>
       ))}
-    </div>
+  </div>
+
+  {flights.length === 0 && (
+    <div class="empty">No flights yet. Add one above, or drop a bundle at <code>public/flights/&lt;slug&gt;/flight.json</code>.</div>
   )}
 </div>
 </body>

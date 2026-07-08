@@ -34,6 +34,8 @@
 
 - [ ] Add video player
 
-- [ ] Add text annotations
+- [x] Add text annotations
 
 - [ ] Activity specific fields
+
+- [ ] User & flight backend 

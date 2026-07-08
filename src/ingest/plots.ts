@@ -235,25 +235,30 @@ export function createScrubber(
     return bt;
   }
 
+  // one controller for every listener this instance adds; destroy() aborts it so
+  // no stale drag handlers linger on the shared canvases (each old handler would
+  // otherwise keep scrubbing its own photo — moving one photo would move others).
+  const ac = new AbortController();
+  const sig = { signal: ac.signal };
+
   function bindDrag(canvas: HTMLCanvasElement, timeFrom: (e: PointerEvent) => number) {
     let dragging = false;
     const move = (e: PointerEvent) => { cur = timeFrom(e); draw(); onScrub(cur); };
-    canvas.addEventListener("pointerdown", (e) => { dragging = true; canvas.setPointerCapture(e.pointerId); move(e); });
-    canvas.addEventListener("pointermove", (e) => { if (dragging) move(e); });
+    canvas.addEventListener("pointerdown", (e) => { dragging = true; canvas.setPointerCapture(e.pointerId); move(e); }, sig);
+    canvas.addEventListener("pointermove", (e) => { if (dragging) move(e); }, sig);
     const up = (e: PointerEvent) => { dragging = false; try { canvas.releasePointerCapture(e.pointerId); } catch {} };
-    canvas.addEventListener("pointerup", up);
-    canvas.addEventListener("pointercancel", up);
+    canvas.addEventListener("pointerup", up, sig);
+    canvas.addEventListener("pointercancel", up, sig);
   }
   bindDrag(altc, altTimeFromEvent);
   bindDrag(plan, planTimeFromEvent);
 
-  const onResize = () => draw();
-  window.addEventListener("resize", onResize);
+  window.addEventListener("resize", () => draw(), sig);
 
   draw();
   return {
     setTime(t) { cur = Math.max(0, Math.min(last, t)); draw(); },
     relayout() { draw(); },
-    destroy() { window.removeEventListener("resize", onResize); if (raf) cancelAnimationFrame(raf); },
+    destroy() { ac.abort(); if (raf) cancelAnimationFrame(raf); },
   };
 }
