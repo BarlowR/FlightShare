@@ -1,6 +1,7 @@
 ---
 import "../styles/global.css";
 import "../styles/ingest.css";
+import { ACTIVITIES } from "../shared/activities";
 ---
 
 <!doctype html>
@@ -21,10 +22,16 @@ import "../styles/ingest.css";
     <p class="sub">Give it a title and drop your tracklog and photos. You'll set captions, timing, and details next.</p>
   </header>
 
-  <!-- 1 · Title -->
+  <!-- 1 · Title + activity -->
   <section class="step">
     <h2><span class="idx">1</span>Title</h2>
     <input type="text" id="fTitle" placeholder="Niederhorn → Interlaken" />
+    <div class="actions">
+      <label class="note">Activity</label>
+      <div class="seg" id="actSeg" role="group" aria-label="Activity type">
+        {ACTIVITIES.map((a) => <button type="button" data-act={a.key}>{a.label}</button>)}
+      </div>
+    </div>
   </section>
 
   <!-- 2 · Tracklog -->

@@ -56,14 +56,7 @@ const DEV = import.meta.env.DEV;
       <div class="actions">
         <label class="note">Activity</label>
         <div class="seg" id="actSeg" role="group" aria-label="Activity type">
-          {ACTIVITIES.map((a) => <button data-act={a.key}>{a.label}</button>)}
-        </div>
-      </div>
-      <div class="actions">
-        <label class="note">Default camera</label>
-        <div class="seg" id="camSeg" role="group" aria-label="Default camera">
-          <button data-cam="free">Free</button>
-          <button data-cam="follow">Follow</button>
+          {ACTIVITIES.map((a) => <button type="button" data-act={a.key}>{a.label}</button>)}
         </div>
       </div>
     </section>

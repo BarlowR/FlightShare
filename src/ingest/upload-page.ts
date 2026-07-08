@@ -6,7 +6,7 @@
  */
 
 import { parseTracklog, type Track } from "./tracklog";
-import { DEFAULT_ACTIVITY } from "../shared/activities";
+import { type Activity, DEFAULT_ACTIVITY } from "../shared/activities";
 import { readPhotoMeta, type PhotoMeta } from "./exif";
 import { downscale } from "./image";
 import { fitOffset, photoTrackTime, clampToTrack, interpAt } from "./sync";
@@ -20,6 +20,17 @@ type Item = { id: string; meta: PhotoMeta; web: Blob; thumb: Blob; thumbUrl: str
 let track: Track | null = null;
 const items: Item[] = [];
 let seq = 0;
+
+/* -------------------------------------------------------------- activity ---- */
+let activity: Activity = DEFAULT_ACTIVITY;
+function setActivity(a: Activity) {
+  activity = a;
+  document.querySelectorAll<HTMLButtonElement>("#actSeg button").forEach((b) =>
+    b.setAttribute("aria-pressed", String(b.dataset.act === a)));
+}
+document.querySelectorAll<HTMLButtonElement>("#actSeg button").forEach((b) =>
+  b.addEventListener("click", () => setActivity(b.dataset.act as Activity)));
+setActivity(activity);   // reflect the default selection on load
 
 /* -------------------------------------------------------------- tracklog ---- */
 
@@ -115,7 +126,7 @@ $("continueBtn").addEventListener("click", async () => {
   });
 
   const bundle: Bundle = {
-    version: 1, title, date, activity: DEFAULT_ACTIVITY,
+    version: 1, title, date, activity,
     // name / gear / location come from the IGC headers (person / glider / site,
     // when present) so they arrive pre-filled on the edit page; blank → undefined.
     name: track.meta.pilot, gear: track.meta.glider, location: track.meta.site,

@@ -119,20 +119,10 @@ function loadBundle(b: Bundle, thumbFor: (path: string) => string) {
   $("fGear").value = b.gear ?? (b as any).glider ?? "";
   $("fLocation").value = b.location ?? (b as any).site ?? "";
   $("fDesc").value = b.description || "";
-  setCamera(b.settings?.cameraDefault || "follow");
   setActivity(asActivity(b.activity));
 
   items = b.media.map((m) => ({ m, baseT: m.t, caption: m.caption || "", thumbUrl: thumbFor(m.thumb || ""), webUrl: thumbFor(m.web || ""), committed: true }));
   renderPhotos();
-}
-
-/* camera default toggle */
-document.querySelectorAll<HTMLButtonElement>("#camSeg button").forEach((b) =>
-  b.addEventListener("click", () => setCamera(b.dataset.cam as "free" | "follow")));
-function setCamera(cam: "free" | "follow") {
-  if (bundle) bundle.settings.cameraDefault = cam;
-  document.querySelectorAll<HTMLButtonElement>("#camSeg button").forEach((b) =>
-    b.setAttribute("aria-pressed", String(b.dataset.cam === cam)));
 }
 
 /* activity type toggle — the viewer picks which stats to show from this */

@@ -102,6 +102,9 @@ button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 
 .actions { display: flex; gap: 12px; align-items: center; margin-top: 24px; flex-wrap: wrap; }
 .actions .spacer { flex: 1; }
+/* the activity picker has six options with long labels — let it wrap instead of
+   clipping the rightmost ones inside the segmented control's hidden overflow */
+#actSeg { flex-wrap: wrap; }
 /* prominent stacked actions: a large primary "Open in viewer" with any dev
    action beneath it, both full width in the same style */
 .big-actions { display: flex; flex-direction: column; gap: 12px; margin-top: 24px; }

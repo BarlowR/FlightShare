@@ -25,7 +25,7 @@ export type Bundle = {
   version: 1;
   title: string;
   date: string;         // YYYY-MM-DD
-  activity?: Activity;  // run | ski | paraglide | bike | other (older bundles omit it)
+  activity?: Activity;  // run | ski | freeflight | powered | bike | other (older bundles omit it)
   name?: string;        // the person
   gear?: string;        // shoes / skis / wing / bike …
   location?: string;    // where it happened
