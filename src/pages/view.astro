@@ -8,7 +8,7 @@ import NotifyModal from "../components/NotifyModal.astro";
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-<title>Skylog — flight playback</title>
+<title>Peregrination — playback</title>
 
 <!-- CesiumJS loader: official CDN first, jsDelivr as fallback. is:inline keeps
      Astro from bundling it, so it runs first and sets window.__cesiumReady
@@ -51,26 +51,23 @@ window.__cesiumReady = new Promise((resolve, reject) => {
 
 <div id="cesiumContainer"></div>
 
-<!-- "Save" CTA — styled like (and stacked under) the Back-to-editing pill;
-     positioned in bundle.ts. Opens the in-development / notify popup. -->
-<button class="save-fab" id="saveFab" type="button" data-notify>Save</button>
+<!-- "Save" CTA — only shown when previewing a draft (?draft=slug); styled like
+     (and stacked under) the Back-to-editing pill, positioned in bundle.ts.
+     Opens the in-development / notify popup. -->
+<button class="save-fab" id="saveFab" type="button" data-notify hidden>Save</button>
 
-<!-- Flight card — a header on mobile; everything below the title collapses -->
-<aside class="flight-card collapsed" id="flightCard" aria-label="Flight information">
+<!-- Activity card — a header on mobile; everything below the title collapses -->
+<aside class="flight-card collapsed" id="flightCard" aria-label="Activity information">
   <div class="card-head">
     <div class="card-head-text">
-      <p class="eyebrow"><a href="/">← Skylog flights</a></p>
+      <p class="eyebrow"><a href="/">← Peregrination</a></p>
       <h1 id="flightTitle">—</h1>
     </div>
-    <button class="card-toggle" id="cardToggle" aria-label="Show flight details" aria-expanded="false">▾</button>
+    <button class="card-toggle" id="cardToggle" aria-label="Show activity details" aria-expanded="false">▾</button>
   </div>
   <div class="card-body" id="cardBody">
     <p class="flight-meta" id="flightMeta">—</p>
-    <div class="stats">
-      <div class="stat"><b id="stDur">—</b><span>Duration</span></div>
-      <div class="stat"><b id="stMax">—</b><span>Max alt</span></div>
-      <div class="stat"><b id="stClimb">—</b><span>Best climb</span></div>
-    </div>
+    <div class="stats" id="stats"><!-- tiles built per activity in bundle.ts --></div>
     <div class="desc" id="descWrap" hidden>
       <p class="desc-text clamp" id="flightDesc"></p>
       <button class="desc-toggle" id="descToggle" aria-expanded="false">More</button>
@@ -78,14 +75,14 @@ window.__cesiumReady = new Promise((resolve, reject) => {
   </div>
 </aside>
 
-<!-- Floating "back to editing" button — shown (and positioned under the flight
+<!-- Floating "back to editing" button — shown (and positioned under the activity
      card) only when previewing an in-browser draft (?draft=slug). -->
 <a class="edit-return" id="editReturn" hidden>← Back to editing</a>
 
-<!-- Bottom flight strip — a footer on mobile (slider + controls + compass) -->
+<!-- Bottom control strip — a footer on mobile (slider + controls + compass) -->
 <div class="strip" role="region" aria-label="Playback controls">
   <div class="controls">
-    <button class="btn-play" id="btnPlay" aria-label="Play flight">
+    <button class="btn-play" id="btnPlay" aria-label="Play">
       <svg id="icoPlay" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
       <svg id="icoPause" viewBox="0 0 24 24" style="display:none"><path d="M6 5h4v14H6zM14 5h4v14h-4z"/></svg>
     </button>
@@ -97,8 +94,8 @@ window.__cesiumReady = new Promise((resolve, reject) => {
 
   <div class="telemetry" aria-label="Live telemetry">
     <div class="cell"><b id="alt">— m</b><span>ALTITUDE</span></div>
-    <div class="cell"><b id="spd">— km/h</b><span>GROUND SPD</span></div>
-    <div class="cell"><b id="vario">— m/s</b><span>VARIO</span></div>
+    <div class="cell"><b id="spd">— km/h</b><span id="lblSpd">SPEED</span></div>
+    <div class="cell"><b id="vario">— m/s</b><span id="lblVario">VERT</span></div>
   </div>
 
   <div class="profile-wrap">
@@ -136,10 +133,10 @@ window.__cesiumReady = new Promise((resolve, reject) => {
 </div>
 
 <!-- Lightbox -->
-<div class="lightbox" id="lightbox" role="region" aria-label="Flight photo">
-  <button class="lb-close" id="lbClose" aria-label="Close photo">✕</button>
+<div class="lightbox" id="lightbox" role="region" aria-label="Photo">
+  <button class="lb-close" id="lbClose" aria-label="Close">✕</button>
   <div class="lb-frame">
-    <img id="lbImg" alt="Flight photo" />
+    <img id="lbImg" alt="Photo" />
     <div class="lb-note" id="lbNote" style="display:none"></div>
     <div class="lb-dots" id="lbDots" role="tablist" aria-label="Photos &amp; notes — swipe or tap a dot"></div>
     <div class="lb-strip" id="lbStrip" role="group" aria-label="Photos at this spot"></div>

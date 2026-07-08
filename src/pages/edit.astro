@@ -2,9 +2,10 @@
 import "../styles/global.css";
 import "../styles/ingest.css";
 import NotifyModal from "../components/NotifyModal.astro";
+import { ACTIVITIES } from "../shared/activities";
 
-// The "Save to disk" backdoor and loading existing flights are dev-only: this is
-// statically false in a production `astro build`, so the button never ships.
+// The "Save to disk" backdoor and loading existing activities are dev-only: this
+// is statically false in a production `astro build`, so the button never ships.
 const DEV = import.meta.env.DEV;
 ---
 
@@ -13,7 +14,7 @@ const DEV = import.meta.env.DEV;
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Skylog — edit flight</title>
+<title>Peregrination — edit</title>
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@100;300;400;500&display=swap" rel="stylesheet" />
@@ -21,14 +22,14 @@ const DEV = import.meta.env.DEV;
 <body>
 <main class="ingest">
   <header>
-    <p class="eyebrow"><a href="/">← Skylog flights</a></p>
-    <h1>Edit flight</h1>
-    <p class="sub" id="sub">Adjust details, captions, and photo timing, then export the flight bundle.</p>
+    <p class="eyebrow"><a href="/">← Peregrination</a></p>
+    <h1>Edit activity</h1>
+    <p class="sub" id="sub">Adjust details, captions, and photo timing, then export the activity bundle.</p>
   </header>
 
-  <!-- shown while no flight is loaded -->
+  <!-- shown while no activity is loaded -->
   <section class="step" id="loader">
-    <h2>Open a flight</h2>
+    <h2>Open an activity</h2>
     <p class="note">Continue a draft from a recent upload, or open a <b>flight.json</b> bundle to edit.</p>
     <div class="chips" id="draftList" style="margin-top:16px"></div>
     <div class="actions">
@@ -40,17 +41,23 @@ const DEV = import.meta.env.DEV;
     <p class="err" id="loadErr" hidden></p>
   </section>
 
-  <!-- editor (hidden until a flight loads) -->
+  <!-- editor (hidden until an activity loads) -->
   <div id="editor" hidden>
     <section class="step">
       <h2><span class="idx">1</span>Details</h2>
       <div class="form">
         <label>Title<input type="text" id="fTitle" /></label>
         <label>Date<input type="date" id="fDate" /></label>
-        <label>Pilot<input type="text" id="fPilot" /></label>
-        <label>Glider<input type="text" id="fGlider" /></label>
-        <label>Site<input type="text" id="fSite" /></label>
+        <label>Name<input type="text" id="fName" /></label>
+        <label>Gear<input type="text" id="fGear" /></label>
+        <label>Location<input type="text" id="fLocation" /></label>
         <label class="wide">Description<textarea id="fDesc" rows="3"></textarea></label>
+      </div>
+      <div class="actions">
+        <label class="note">Activity</label>
+        <div class="seg" id="actSeg" role="group" aria-label="Activity type">
+          {ACTIVITIES.map((a) => <button data-act={a.key}>{a.label}</button>)}
+        </div>
       </div>
       <div class="actions">
         <label class="note">Default camera</label>
@@ -78,7 +85,7 @@ const DEV = import.meta.env.DEV;
       <div class="big-actions">
         <button type="button" class="primary big-btn" data-notify>Save</button>
         <button id="viewBtn" class="big-btn">Open in viewer →</button>
-        {DEV && <button id="diskBtn" class="big-btn" title="Write flight.json + media back to the flight's folder">Save to dev</button>}
+        {DEV && <button id="diskBtn" class="big-btn" title="Write flight.json + media back to the activity's folder">Save to dev</button>}
       </div>
       <p class="note status" id="status"></p>
     </section>

@@ -1,9 +1,11 @@
 /**
- * Shared shapes for the flight bundle (design doc §3.3) and the in-browser draft
- * that the upload page hands to the edit page. `Bundle` is exactly what the
- * viewer fetches as flight.json; `Draft` wraps it with the photo blobs so the
- * bundle can be previewed and exported without a server.
+ * Shared shapes for the activity bundle (design doc §3.3) and the in-browser
+ * draft that the upload page hands to the edit page. `Bundle` is exactly what
+ * the viewer fetches as flight.json; `Draft` wraps it with the photo blobs so
+ * the bundle can be previewed and exported without a server.
  */
+
+import type { Activity } from "../shared/activities";
 
 export type Media = {
   id: string;
@@ -23,9 +25,10 @@ export type Bundle = {
   version: 1;
   title: string;
   date: string;         // YYYY-MM-DD
-  site?: string;
-  pilot?: string;
-  glider?: string;
+  activity?: Activity;  // run | ski | paraglide | bike | other (older bundles omit it)
+  name?: string;        // the person
+  gear?: string;        // shoes / skis / wing / bike …
+  location?: string;    // where it happened
   description?: string;
   track: { t0: string; dt: number; points: [number, number, number, number][] };
   media: Media[];
@@ -44,11 +47,11 @@ export type Draft = {
   photoTimes?: Record<string, number>;
 };
 
-/** URL-safe slug from a flight title, with a short random suffix so two flights
- *  named the same don't collide. */
+/** URL-safe slug from an activity title, with a short random suffix so two
+ *  activities named the same don't collide. */
 export function slugify(title: string): string {
   const base = title.toLowerCase().trim()
-    .replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 40) || "flight";
+    .replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 40) || "activity";
   const suffix = Math.random().toString(36).slice(2, 6);
   return `${base}-${suffix}`;
 }

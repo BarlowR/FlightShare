@@ -2,15 +2,16 @@
 import "../styles/global.css";
 import fs from "node:fs";
 import path from "node:path";
+import { type Activity, ACTIVITY_LABEL, asActivity } from "../shared/activities";
 
 /**
- * Flight gallery. Auto-discovers every bundle under public/flights/<slug>/flight.json
+ * Activity gallery. Auto-discovers every bundle under public/flights/<slug>/flight.json
  * at build time and renders a card per flight linking to the viewer. Drop another
  * bundle folder in and it shows up here — no code change.
  */
 type Card = {
-  slug: string; title: string; date: string;
-  pilot?: string; glider?: string; site?: string;
+  slug: string; title: string; date: string; activity: Activity;
+  name?: string; gear?: string; location?: string;
   durationMin: number; maxAlt: number; photos: number; thumb: string | null;
 };
 
@@ -35,7 +36,8 @@ for (const slug of slugs) {
       slug,
       title: b.title || slug,
       date: b.date || "",
-      pilot: b.pilot, glider: b.glider, site: b.site,
+      activity: asActivity(b.activity),
+      name: b.name ?? b.pilot, gear: b.gear ?? b.glider, location: b.location ?? b.site,
       durationMin: Math.round(last / 60),
       maxAlt: Math.round(maxAlt),
       photos: photoMedia.length,
@@ -62,7 +64,7 @@ const DEV = import.meta.env.DEV;
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Skylog — flights</title>
+<title>Peregrination — activities</title>
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@100;300;400;500&display=swap" rel="stylesheet" />
@@ -102,7 +104,14 @@ const DEV = import.meta.env.DEV;
     padding: 4px 10px; backdrop-filter: blur(6px);
   }
   .card-edit:hover { background: rgba(214, 189, 155, 0.2); }
-  .thumb { height: 156px; background-color: var(--card-back); background-size: cover; background-position: center; border-bottom: 1px solid var(--line); }
+  .thumb { position: relative; height: 156px; background-color: var(--card-back); background-size: cover; background-position: center; border-bottom: 1px solid var(--line); }
+  /* activity type badge, pinned to the thumbnail corner */
+  .activity-badge {
+    position: absolute; top: 10px; left: 10px;
+    font-family: var(--font-data); font-size: 10.5px; letter-spacing: 0.06em; text-transform: uppercase;
+    color: var(--accent); background: rgba(20, 12, 12, 0.72); backdrop-filter: blur(6px);
+    border: 1px solid var(--accent); border-radius: 999px; padding: 3px 10px;
+  }
   .card-body { padding: 14px 16px 16px; }
   .card h2 { font-size: var(--fs-sub); font-weight: 300; margin: 0 0 4px; }
   .meta { font-size: 12.5px; color: var(--muted); margin: 0 0 12px; }
@@ -119,24 +128,26 @@ const DEV = import.meta.env.DEV;
 <div class="wrap">
   <header>
     <div class="head-text">
-      <p class="eyebrow">Skylog</p>
-      <h1>Flights</h1>
-      <p class="sub">Pick a flight to play back in 3D.</p>
+      <p class="eyebrow">Peregrination</p>
+      <h1>Activities</h1>
+      <p class="sub">Share Adventures</p>
     </div>
   </header>
 
   <div class="grid">
     <a class="card card-add" href="/upload">
       <span class="plus">+</span>
-      <span>Add Your Flight</span>
+      <span>Add Your Activity</span>
     </a>
     {flights.map((f) => (
         <div class="card-wrap">
           <a class="card" href={`/view?flight=${f.slug}`}>
-            <div class="thumb" style={f.thumb ? `background-image:url('${f.thumb}')` : ""}></div>
+            <div class="thumb" style={f.thumb ? `background-image:url('${f.thumb}')` : ""}>
+              <span class="activity-badge">{ACTIVITY_LABEL[f.activity]}</span>
+            </div>
             <div class="card-body">
               <h2>{f.title}</h2>
-              <p class="meta">{[fmtDate(f.date), f.pilot, f.site].filter(Boolean).join(" · ")}</p>
+              <p class="meta">{[fmtDate(f.date), f.name, f.location].filter(Boolean).join(" · ")}</p>
               <div class="chips">
                 <span class="chip">{fmtDur(f.durationMin)}</span>
                 <span class="chip">{f.maxAlt} m</span>
@@ -150,7 +161,7 @@ const DEV = import.meta.env.DEV;
   </div>
 
   {flights.length === 0 && (
-    <div class="empty">No flights yet. Add one above, or drop a bundle at <code>public/flights/&lt;slug&gt;/flight.json</code>.</div>
+    <div class="empty">No activities yet. Add one above, or drop a bundle at <code>public/flights/&lt;slug&gt;/flight.json</code>.</div>
   )}
 </div>
 </body>

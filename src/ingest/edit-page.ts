@@ -12,6 +12,7 @@ import { readPhotoMeta } from "./exif";
 import { downscale } from "./image";
 import { saveDraft, loadDraft, listDrafts } from "./store";
 import { createScrubber, type Scrubber } from "./plots";
+import { type Activity, DEFAULT_ACTIVITY, asActivity } from "../shared/activities";
 
 const $ = (id: string): any => document.getElementById(id);
 
@@ -22,7 +23,7 @@ type Item = {
 };
 
 let bundle: Bundle | null = null;
-let slug = "flight";
+let slug = "activity";
 let blobs: Record<string, Blob> = {};   // in-bundle path → bytes, for re-export
 let items: Item[] = [];
 let photoTimes: Record<string, number> = {};   // media id → original EXIF capture ms
@@ -97,7 +98,7 @@ $("jsonInput").addEventListener("change", async () => {
   try {
     const b: Bundle = JSON.parse(await f.text());
     if (!b.track?.points) throw new Error("Not a flight.json (no track)");
-    slug = slugify(b.title || "flight"); blobs = {};
+    slug = slugify(b.title || "activity"); blobs = {};
     loadBundle(b, () => "");   // no media bytes available from a lone JSON
     $("status").textContent = "Loaded metadata only — media not included when saving";
   } catch (e: any) { showErr(e); }
@@ -113,11 +114,13 @@ function loadBundle(b: Bundle, thumbFor: (path: string) => string) {
 
   $("fTitle").value = b.title || "";
   $("fDate").value = b.date || b.track.t0.slice(0, 10);
-  $("fPilot").value = b.pilot || "";
-  $("fGlider").value = b.glider || "";
-  $("fSite").value = b.site || "";
+  // read new field names, falling back to the legacy flight ones on old drafts
+  $("fName").value = b.name ?? (b as any).pilot ?? "";
+  $("fGear").value = b.gear ?? (b as any).glider ?? "";
+  $("fLocation").value = b.location ?? (b as any).site ?? "";
   $("fDesc").value = b.description || "";
   setCamera(b.settings?.cameraDefault || "follow");
+  setActivity(asActivity(b.activity));
 
   items = b.media.map((m) => ({ m, baseT: m.t, caption: m.caption || "", thumbUrl: thumbFor(m.thumb || ""), webUrl: thumbFor(m.web || ""), committed: true }));
   renderPhotos();
@@ -130,6 +133,16 @@ function setCamera(cam: "free" | "follow") {
   if (bundle) bundle.settings.cameraDefault = cam;
   document.querySelectorAll<HTMLButtonElement>("#camSeg button").forEach((b) =>
     b.setAttribute("aria-pressed", String(b.dataset.cam === cam)));
+}
+
+/* activity type toggle — the viewer picks which stats to show from this */
+let activity: Activity = DEFAULT_ACTIVITY;
+document.querySelectorAll<HTMLButtonElement>("#actSeg button").forEach((b) =>
+  b.addEventListener("click", () => setActivity(b.dataset.act as Activity)));
+function setActivity(a: Activity) {
+  activity = a;
+  document.querySelectorAll<HTMLButtonElement>("#actSeg button").forEach((b) =>
+    b.setAttribute("aria-pressed", String(b.dataset.act === a)));
 }
 
 /* ---- item selection + track scrubber (bottom sheet) ---- */
@@ -318,7 +331,7 @@ function renderPhotos() {
         <span class="tag">${escapeHtml(it.m.type || "media")}</span>
         <input type="text" placeholder="${annot ? "Annotation text" : "Caption"}" value="${escapeAttr(it.caption)}" />
         <div class="badge"></div>
-        ${oob ? `<div class="oob">⚠ This photo's time falls outside the flight. Are you sure this photo is correct?
+        ${oob ? `<div class="oob">⚠ This photo's time falls outside the activity. Are you sure this photo is correct?
           <button class="oob-keep">Keep it</button><button class="oob-rm">Remove</button></div>` : ""}
       </div>
       <button class="rm" title="Remove" aria-label="Remove item">✕</button>`;
@@ -391,11 +404,14 @@ function assemble(): Bundle {
       lat: round(pos.lat, 6), lon: round(pos.lon, 6), alt: Math.round(pos.alt),
     };
   });
+  const { pilot, glider, site, ...rest } = b as any;   // drop any legacy flight field names
   return {
-    ...b,
+    ...rest,
     title: $("fTitle").value.trim() || b.title,
     date: $("fDate").value || b.date,
-    pilot: val("fPilot"), glider: val("fGlider"), site: val("fSite"), description: val("fDesc"),
+    activity,
+    name: val("fName"), gear: val("fGear"), location: val("fLocation"),
+    description: val("fDesc"),
     media,
     settings: { ...b.settings },
   };

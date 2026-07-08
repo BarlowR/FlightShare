@@ -68,6 +68,7 @@ body { font-family: var(--font-ui); color: var(--ink); font-weight: 300; }
   transition: background 0.15s;
 }
 .save-fab:hover { background: rgba(214, 189, 155, 0.18); }
+.save-fab[hidden] { display: none; }   /* only shown in draft preview */
 .cesium-viewer-bottom { left: 8px !important; }  /* keep data attribution visible, tucked left */
 
 /* ---------- flight card ---------- */

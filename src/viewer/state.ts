@@ -7,6 +7,8 @@
  * and read/write its fields; every module sees the same live values.
  */
 
+import { type Activity, DEFAULT_ACTIVITY } from "../shared/activities";
+
 export interface TrackPoint { t: number; lat: number; lon: number; alt: number; }
 
 export interface PhotoGroup {
@@ -54,6 +56,8 @@ export const S = {
   groups: [] as PhotoGroup[],
   T0: 0, DT: 1, TOTAL: 0,
   flownM: 0, maxAlt: -Infinity, minAlt: Infinity, bestClimb: 0, W: 8,
+  gain: 0, loss: 0,   // cumulative ascent / descent along the track
+  activity: DEFAULT_ACTIVITY as Activity,
 
   // lightbox
   lbIndex: 0,

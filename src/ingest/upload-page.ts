@@ -6,6 +6,7 @@
  */
 
 import { parseTracklog, type Track } from "./tracklog";
+import { DEFAULT_ACTIVITY } from "../shared/activities";
 import { readPhotoMeta, type PhotoMeta } from "./exif";
 import { downscale } from "./image";
 import { fitOffset, photoTrackTime, clampToTrack, interpAt } from "./sync";
@@ -94,7 +95,7 @@ $("continueBtn").addEventListener("click", async () => {
   const btn = $("continueBtn"); btn.disabled = true; $("metaNote").textContent = "Saving draft…";
 
   const date = track.t0.slice(0, 10);
-  const title = $("fTitle").value.trim() || `Flight ${date}`;
+  const title = $("fTitle").value.trim() || `Activity ${date}`;
   const slug = slugify(title);
   const last = track.points[track.points.length - 1][0];
 
@@ -114,10 +115,10 @@ $("continueBtn").addEventListener("click", async () => {
   });
 
   const bundle: Bundle = {
-    version: 1, title, date,
-    // pilot / glider / site extracted from the IGC headers (when present) so
-    // they arrive pre-filled on the edit page; blank fields stay undefined.
-    pilot: track.meta.pilot, glider: track.meta.glider, site: track.meta.site,
+    version: 1, title, date, activity: DEFAULT_ACTIVITY,
+    // name / gear / location come from the IGC headers (person / glider / site,
+    // when present) so they arrive pre-filled on the edit page; blank → undefined.
+    name: track.meta.pilot, gear: track.meta.glider, location: track.meta.site,
     track: { t0: track.t0, dt: track.dt, points: track.points },
     media,
     settings: { syncOffsetSec: offsetSec, cameraDefault: "follow" },

@@ -1,6 +1,6 @@
 ---
 /**
- * "In development" popup shared by the editor and the flight preview. Any button
+ * "In development" popup shared by the editor and the activity preview. Any button
  * with a `data-notify` attribute opens it; it explains that saving/sharing isn't
  * live yet and collects an email for launch updates.
  *
@@ -14,7 +14,7 @@
   <div class="notify-card" role="dialog" aria-modal="true" aria-labelledby="notifyTitle">
     <button class="notify-close" data-notify-close aria-label="Close">✕</button>
     <h2 id="notifyTitle">Saving is on the way</h2>
-    <p>Skylog is still in development — saving and sharing your own flights isn’t live
+    <p>Peregrination is still in development — saving and sharing your own activities isn’t live
        yet. Leave your email and we’ll let you know the moment it is.</p>
     <form class="notify-form" id="notifyForm">
       <input type="email" id="notifyEmail" required placeholder="you@example.com"
@@ -106,7 +106,7 @@
           body: JSON.stringify({ email: addr }),
         });
       } else {
-        const key = "skylog:notify-list";
+        const key = "peregrination:notify-list";
         const list: string[] = JSON.parse(localStorage.getItem(key) || "[]");
         if (!list.includes(addr)) list.push(addr);
         localStorage.setItem(key, JSON.stringify(list));

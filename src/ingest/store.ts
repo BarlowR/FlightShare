@@ -7,7 +7,7 @@
 
 import type { Draft } from "./bundle";
 
-const DB = "skylog-drafts";
+const DB = "peregrination-drafts";
 const STORE = "drafts";
 
 function open(): Promise<IDBDatabase> {
