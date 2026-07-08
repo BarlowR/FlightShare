@@ -17,7 +17,7 @@
   --accent: #d6bd9b;      /* barlowr purple, lightened to read on dark */
   --sky: #6fb7ff;         /* vario-down (functional instrument color) */
   --line: rgba(245, 239, 225, 0.12);
-  --radius: 14px;
+  --radius: 9px;
 
   /* Roboto everywhere. The thin weights carry the look. */
   --font-ui: "Roboto", system-ui, sans-serif;
@@ -51,7 +51,7 @@ body { font-family: var(--font-ui); color: var(--ink); font-weight: 300; }
 .edit-return {
   position: fixed; z-index: 6; top: 0; left: 16px;
   background: var(--panel); border: 1px solid var(--accent); color: var(--accent);
-  border-radius: 10px; padding: 8px 14px; font-size: 13px; font-weight: 400;
+  border-radius: 7px; padding: 8px 14px; font-size: 13px; font-weight: 400;
   text-decoration: none; backdrop-filter: blur(10px); box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
   transition: background 0.15s;
 }
@@ -63,7 +63,7 @@ body { font-family: var(--font-ui); color: var(--ink); font-weight: 300; }
 .save-fab {
   position: fixed; z-index: 6; top: 64px; left: 16px;
   background: var(--panel); border: 1px solid var(--accent); color: var(--accent);
-  border-radius: 10px; padding: 8px 14px; font-family: var(--font-ui); font-size: 13px; font-weight: 400;
+  border-radius: 7px; padding: 8px 14px; font-family: var(--font-ui); font-size: 13px; font-weight: 400;
   cursor: pointer; backdrop-filter: blur(10px); box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
   transition: background 0.15s;
 }
@@ -112,7 +112,9 @@ body { font-family: var(--font-ui); color: var(--ink); font-weight: 300; }
 .strip {
   position: absolute; left: 16px; right: 16px; bottom: 14px; z-index: 5;
   background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius);
-  backdrop-filter: blur(10px);
+  /* NB: no backdrop-filter here — it would become the containing block for the
+     compass's `position: fixed`, trapping it in the strip instead of pinning it
+     to the viewport's top-right on desktop. The panel is opaque enough to read. */
   display: grid; grid-template-columns: auto auto 1fr auto; gap: 14px; align-items: center;
   padding: 10px 14px;
 }
@@ -125,7 +127,7 @@ button { font-family: inherit; }
 }
 .btn-play:hover { background: rgba(183, 155, 214, 0.25); }
 .btn-play svg { width: 18px; height: 18px; fill: currentColor; }
-.seg { display: flex; border: 1px solid var(--line); border-radius: 9px; overflow: hidden; }
+.seg { display: flex; border: 1px solid var(--line); border-radius: 6px; overflow: hidden; }
 .seg button {
   background: transparent; border: 0; color: var(--muted); cursor: pointer;
   font-family: var(--font-data); font-size: 11.5px; padding: 7px 10px;
@@ -141,7 +143,7 @@ button { font-family: inherit; }
 #vario.down { color: var(--sky); }
 
 .profile-wrap { position: relative; height: 72px; min-width: 140px; }
-#profile { position: absolute; inset: 0; width: 100%; height: 100%; cursor: crosshair; border-radius: 8px; touch-action: none; }
+#profile { position: absolute; inset: 0; width: 100%; height: 100%; cursor: crosshair; border-radius: 5px; touch-action: none; }
 
 .right-cluster { display: flex; align-items: center; gap: 14px; }
 .clock { font-family: var(--font-data); font-size: 12.5px; text-align: right; color: var(--ink); }
@@ -155,7 +157,7 @@ button:focus-visible, input:focus-visible { outline: 2px solid var(--accent); ou
   bottom: 112px; z-index: 15;
   max-width: min(560px, calc(100vw - 40px));
   background: var(--panel); border: 1px solid rgba(255, 125, 107, 0.55);
-  border-radius: 10px; padding: 10px 38px 10px 14px;
+  border-radius: 7px; padding: 10px 38px 10px 14px;
   font-size: 12.5px; line-height: 1.5; color: var(--ink);
   display: none; backdrop-filter: blur(10px);
 }
@@ -242,7 +244,7 @@ button:focus-visible, input:focus-visible { outline: 2px solid var(--accent); ou
 }
 .lb-close {
   background: var(--panel); color: var(--ink); border: 1px solid var(--line);
-  border-radius: 9px; padding: 8px 14px; cursor: pointer; font-size: 13px;
+  border-radius: 6px; padding: 8px 14px; cursor: pointer; font-size: 13px;
 }
 .lb-close:hover { border-color: var(--accent); color: var(--accent); }
 .lb-close { position: absolute; top: 10px; right: 10px; padding: 5px 11px; z-index: 1; }
