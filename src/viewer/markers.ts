@@ -26,7 +26,7 @@ function drawStem(g: Ctx, size: number, H: number, topY: number) {
 }
 
 /** Single photo: circle-cropped thumbnail lens with an amber ring, on a stem. */
-export function circleThumb(url: string, size = 128, ring = 8): Promise<HTMLCanvasElement | null> {
+export function circleThumb(url: string, size = 256, ring = 16): Promise<HTMLCanvasElement | null> {
   return new Promise(resolve => {
     const img = new Image();
     img.onload = () => {
@@ -53,7 +53,7 @@ export function circleThumb(url: string, size = 128, ring = 8): Promise<HTMLCanv
 
 /** Annotation pin: the same magnifying-glass silhouette as a photo pin, but the
  *  lens holds a dark note face with "text" lines instead of a thumbnail. */
-export function annotationPin(size = 128, ring = 8): HTMLCanvasElement {
+export function annotationPin(size = 256, ring = 16): HTMLCanvasElement {
   const c = document.createElement("canvas");
   const H = Math.round(size * MARKER_ASPECT);
   c.width = size; c.height = H;
@@ -75,7 +75,7 @@ export function annotationPin(size = 128, ring = 8): HTMLCanvasElement {
 
 /** Multiphoto pin: the top thumbnail lens with a card peeking behind it and a
  *  count badge, on a stem. */
-export function stackThumb(url: string, count: number, size = 128, ring = 8): Promise<HTMLCanvasElement | null> {
+export function stackThumb(url: string, count: number, size = 256, ring = 16): Promise<HTMLCanvasElement | null> {
   return new Promise(resolve => {
     const img = new Image();
     img.onload = () => {
@@ -104,7 +104,7 @@ export function stackThumb(url: string, count: number, size = 128, ring = 8): Pr
       const bx = size * 0.74, by = size * 0.68, br = size * 0.17;
       g.beginPath(); g.arc(bx, by, br, 0, 7);
       g.fillStyle = C.marker; g.fill();
-      g.lineWidth = 4; g.strokeStyle = C.markerInk; g.stroke();
+      g.lineWidth = size / 32; g.strokeStyle = C.markerInk; g.stroke();
       g.fillStyle = C.markerInk; g.textAlign = "center"; g.textBaseline = "middle";
       g.font = `bold ${Math.round(br * 1.25)}px "IBM Plex Mono", ui-monospace, monospace`;
       g.fillText(String(count), bx, by + 1);

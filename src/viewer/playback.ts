@@ -127,12 +127,14 @@ export function drawProfile(t: number) {
   const pts = S.pts;
   ctx.clearRect(0, 0, cw, ch);
 
-  /* altitude area */
+  /* altitude area — plotted from the raw recorded altitude (alt0), not the
+     terrain-snapped display altitude, so the trace matches the annotation and
+     photo markers, which also carry original altitudes. */
   ctx.beginPath();
-  ctx.moveTo(0, Y(pts[0].alt));
+  ctx.moveTo(0, Y(pts[0].alt0));
   const step = Math.max(1, Math.floor(pts.length / cw));
-  for (let i = 0; i < pts.length; i += step) ctx.lineTo(X(pts[i].t), Y(pts[i].alt));
-  ctx.lineTo(X(S.TOTAL), Y(pts[pts.length - 1].alt));
+  for (let i = 0; i < pts.length; i += step) ctx.lineTo(X(pts[i].t), Y(pts[i].alt0));
+  ctx.lineTo(X(S.TOTAL), Y(pts[pts.length - 1].alt0));
   ctx.strokeStyle = "rgba(111,183,255,0.95)"; ctx.lineWidth = 1.6; ctx.stroke();
   ctx.lineTo(cw, ch); ctx.lineTo(0, ch); ctx.closePath();
   ctx.fillStyle = "rgba(111,183,255,0.14)"; ctx.fill();
@@ -150,7 +152,7 @@ export function drawProfile(t: number) {
   const x = X(t);
   ctx.beginPath(); ctx.moveTo(x, 2); ctx.lineTo(x, ch - 2);
   ctx.strokeStyle = "rgba(255,180,84,0.9)"; ctx.lineWidth = 1.5; ctx.stroke();
-  ctx.beginPath(); ctx.arc(x, Y(interpAt(t).alt), 4.6, 0, 7);
+  ctx.beginPath(); ctx.arc(x, Y(interpAt(t).alt0), 4.6, 0, 7);
   ctx.fillStyle = C.marker; ctx.fill();
   ctx.lineWidth = 2; ctx.strokeStyle = C.markerInk; ctx.stroke();
 }

@@ -29,6 +29,9 @@ export async function initCesium(token: string) {
     animation: false, timeline: false, geocoder: false, homeButton: false,
     sceneModePicker: false, baseLayerPicker: false, navigationHelpButton: false,
     fullscreenButton: false, infoBox: false, selectionIndicator: false,
+    // off so the translucent pass sorts pins strictly back-to-front by distance
+    // (each pin is its own collection/command); OIT would blend them order-free
+    orderIndependentTranslucency: false,
   });
   S.viewer = viewer;
   viewer.scene.globe.enableLighting = false;
@@ -193,38 +196,51 @@ export async function initCesium(token: string) {
     },
   });
 
+  /* markers = a trackpoint dot (below) + a pin (above). The dots stay as
+     depth-tested entities so they hide behind terrain and sit under the pins.
+     The pins are magnifying-glass thumbnails (photos) or note icons
+     (annotations); they're drawn over the terrain (disableDepthTestDistance:
+     Infinity) so a pin is never buried behind a ridge — always visible and
+     pickable. That flag disables the depth test, so the depth buffer can't
+     order overlapping pins; instead each pin gets its OWN billboard collection
+     (one draw command each) and Cesium's translucent pass depth-sorts the
+     commands back-to-front, so a nearer pin paints over a farther one. We turn
+     order-independent translucency off (set in the Viewer options above) so
+     that back-to-front sort is what wins. Sorting is Cesium's job here — no
+     per-frame rebuild, so no flicker. */
+  type Pin = { pos: any; image: any; px: number; swellAt: number[]; id: any; bb: any };
+  const pins: Pin[] = [];
+
+  const dot = (pos: any, id: any) => {
+    const ent = viewer.entities.add({
+      position: pos,
+      point: {                                            // the trackpoint, below the pin
+        pixelSize: 7, color: Cesium.Color.fromCssColorString(C.marker),
+        outlineColor: Cesium.Color.fromCssColorString(C.markerInk), outlineWidth: 2,
+        eyeOffset: new Cesium.Cartesian3(0, 0, -30),      // nudge off the track line it sits on
+        // depth-tested (unlike the pin): the dot belongs on the surface, so it
+        // stays behind the pins and hides behind terrain instead of floating on top
+      },
+    });
+    Object.assign(ent, id);   // __photoIndex / __annotIndex: clicking the dot works too
+  };
+
   /* photo markers: a magnifying-glass pin per spot (single thumbnail, or a
-     stacked "multiphoto" marker with a count). Depth-tested against terrain and
-     each other. Icons are pre-rendered to canvases up front. */
+     stacked "multiphoto" marker with a count). Icons pre-rendered to canvases. */
   const groupIcons = await Promise.all(S.groups.map(g =>
     g.members.length > 1
       ? stackThumb(S.PHOTOS[g.members[0]].thumb, g.members.length)
       : circleThumb(S.PHOTOS[g.members[0]].thumb)));
   S.groups.forEach((g, gi) => {
-    const px = g.members.length > 1 ? 58 : 46;
-    const times = g.members.map(mi => S.PHOTOS[mi].t);   // swell near ANY member's time
-    const ent = viewer.entities.add({
-      position: Cesium.Cartesian3.fromDegrees(g.lon, g.lat, g.alt),
-      point: {                                            // the trackpoint, below the pin
-        pixelSize: 7, color: Cesium.Color.fromCssColorString(C.marker),
-        outlineColor: Cesium.Color.fromCssColorString(C.markerInk), outlineWidth: 2,
-        eyeOffset: new Cesium.Cartesian3(0, 0, -30),      // nudge off the track line it sits on
-      },
-      billboard: {
-        image: groupIcons[gi] || S.PHOTOS[g.members[0]].thumb,
-        width: px, height: Math.round(px * MARKER_ASPECT),
-        verticalOrigin: Cesium.VerticalOrigin.BOTTOM,     // pin sits ABOVE the trackpoint
-        horizontalOrigin: Cesium.HorizontalOrigin.CENTER,
-        eyeOffset: new Cesium.Cartesian3(0, 0, -30),
-        scale: new Cesium.CallbackProperty(() => {
-          if (reducedMotion) return 1;
-          const t = Cesium.JulianDate.secondsDifference(clock.currentTime, clock.startTime);
-          const d = Math.min(...times.map(tm => Math.abs(t - tm)));
-          return 1 + 0.35 * Math.max(0, 1 - d / 14);      // swell as playback passes by
-        }, false),
-      },
+    const pos = Cesium.Cartesian3.fromDegrees(g.lon, g.lat, g.alt);
+    const id = { __photoIndex: g.members[0] };            // click opens the group's first photo
+    dot(pos, id);
+    pins.push({
+      pos, image: groupIcons[gi] || S.PHOTOS[g.members[0]].thumb,
+      px: g.members.length > 1 ? 58 : 46,
+      swellAt: g.members.map(mi => S.PHOTOS[mi].t),        // swell near ANY member's time
+      id, bb: null,
     });
-    (ent as any).__photoIndex = g.members[0];   // click opens the group's first photo
   });
 
   /* text annotations: a note pin in the same style as the photo pins; clicking
@@ -232,28 +248,36 @@ export async function initCesium(token: string) {
   if (S.ANNOTATIONS.length) {
     const annotIcon = annotationPin();
     S.ANNOTATIONS.forEach((a, ai) => {
-      const px = 46;
-      const ent = viewer.entities.add({
-        position: Cesium.Cartesian3.fromDegrees(a.lon, a.lat, a.alt),
-        point: {
-          pixelSize: 7, color: Cesium.Color.fromCssColorString(C.marker),
-          outlineColor: Cesium.Color.fromCssColorString(C.markerInk), outlineWidth: 2,
-          eyeOffset: new Cesium.Cartesian3(0, 0, -30),
-        },
-        billboard: {
-          image: annotIcon,
-          width: px, height: Math.round(px * MARKER_ASPECT),
-          verticalOrigin: Cesium.VerticalOrigin.BOTTOM,
-          horizontalOrigin: Cesium.HorizontalOrigin.CENTER,
-          eyeOffset: new Cesium.Cartesian3(0, 0, -30),
-          scale: new Cesium.CallbackProperty(() => {
-            if (reducedMotion) return 1;
-            const t = Cesium.JulianDate.secondsDifference(clock.currentTime, clock.startTime);
-            return 1 + 0.35 * Math.max(0, 1 - Math.abs(t - a.tPos) / 14);
-          }, false),
-        },
-      });
-      (ent as any).__annotIndex = ai;   // click opens the annotation in the lightbox
+      const pos = Cesium.Cartesian3.fromDegrees(a.lon, a.lat, a.alt);
+      const id = { __annotIndex: ai };
+      dot(pos, id);
+      pins.push({ pos, image: annotIcon, px: 46, swellAt: [a.tPos], id, bb: null });
+    });
+  }
+
+  /* one collection per pin (see note above) so the translucent sort orders them */
+  for (const p of pins) {
+    const coll = viewer.scene.primitives.add(new Cesium.BillboardCollection({ scene: viewer.scene }));
+    p.bb = coll.add({
+      position: p.pos, image: p.image,
+      width: p.px, height: Math.round(p.px * MARKER_ASPECT),
+      verticalOrigin: Cesium.VerticalOrigin.BOTTOM,       // pin sits ABOVE the trackpoint
+      horizontalOrigin: Cesium.HorizontalOrigin.CENTER,
+      eyeOffset: new Cesium.Cartesian3(0, 0, -30),
+      disableDepthTestDistance: Number.POSITIVE_INFINITY, // always over terrain
+      id: p.id,
+    });
+  }
+
+  /* swell: grow a pin as playback passes it. Just updates each pin's scale in
+     place every frame — no add/remove, so nothing flickers. */
+  if (pins.length && !reducedMotion) {
+    viewer.scene.preRender.addEventListener(() => {
+      const t = Cesium.JulianDate.secondsDifference(clock.currentTime, clock.startTime);
+      for (const p of pins) {
+        const d = Math.min(...p.swellAt.map(tm => Math.abs(t - tm)));
+        p.bb.scale = 1 + 0.35 * Math.max(0, 1 - d / 14);
+      }
     });
   }
 

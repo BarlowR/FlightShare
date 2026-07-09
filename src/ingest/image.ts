@@ -5,8 +5,8 @@
  * exported web/thumb JPEGs carry no camera GPS or serial metadata.
  */
 
-export const WEB_MAX = 1600;    // long edge of the full-view photo
-export const THUMB_MAX = 320;   // long edge of the dot/lightbox thumbnail
+export const WEB_MAX = 2560;    // long edge of the full-view photo
+export const THUMB_MAX = 480;   // long edge of the dot/lightbox thumbnail
 
 export type Rendition = { web: Blob; thumb: Blob; width: number; height: number };
 
@@ -14,8 +14,8 @@ export type Rendition = { web: Blob; thumb: Blob; width: number; height: number 
 export async function downscale(file: File): Promise<Rendition> {
   const bmp = await loadBitmap(file);
   try {
-    const web = await encode(bmp, WEB_MAX, 0.82);
-    const thumb = await encode(bmp, THUMB_MAX, 0.7);
+    const web = await encode(bmp, WEB_MAX, 0.92);
+    const thumb = await encode(bmp, THUMB_MAX, 0.8);
     return { web: web.blob, thumb: thumb.blob, width: web.w, height: web.h };
   } finally {
     bmp.close?.();

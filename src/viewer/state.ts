@@ -9,7 +9,10 @@
 
 import { type Activity, DEFAULT_ACTIVITY } from "../shared/activities";
 
-export interface TrackPoint { t: number; lat: number; lon: number; alt: number; }
+// alt is the display altitude (terrain-snapped in scene.ts so the track never
+// sinks underground); alt0 is the untouched recorded GNSS altitude, used by the
+// altitude profile so its trace matches the annotation/photo markers.
+export interface TrackPoint { t: number; lat: number; lon: number; alt: number; alt0: number; }
 
 export interface PhotoGroup {
   lat: number; lon: number; alt: number; t: number;

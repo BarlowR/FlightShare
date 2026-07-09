@@ -2,7 +2,7 @@
 import "../styles/global.css";
 import fs from "node:fs";
 import path from "node:path";
-import { type Activity, ACTIVITY_LABEL, asActivity } from "../shared/activities";
+import { type Activity, ACTIVITIES, ACTIVITY_LABEL, asActivity } from "../shared/activities";
 
 /**
  * Activity gallery. Auto-discovers every bundle under public/flights/<slug>/flight.json
@@ -41,13 +41,24 @@ for (const slug of slugs) {
       durationMin: Math.round(last / 60),
       maxAlt: Math.round(maxAlt),
       photos: photoMedia.length,
-      thumb: first ? `/flights/${slug}/${first.thumb || first.web}` : null,
+      // prefer the full-res web rendition for the card cover; the 320px thumb
+      // is too small for a 156px-tall cover on hi-DPI screens
+      thumb: first ? `/flights/${slug}/${first.web || first.thumb}` : null,
     });
   } catch (e: any) {
     console.warn(`[gallery] skipping ${slug}: ${e.message}`);
   }
 }
 flights.sort((a, b) => a.title.localeCompare(b.title));
+
+// Group into one section per activity. Every type gets provisioned, but
+// sections with no activities are dropped so the menu only shows what's
+// actually here. Free Flight leads; the rest keep canonical ACTIVITIES order.
+const MENU_ORDER = [...ACTIVITIES].sort((a, b) =>
+  Number(b.key === "freeflight") - Number(a.key === "freeflight"));
+const sections = MENU_ORDER
+  .map((a) => ({ key: a.key, label: a.label, cards: flights.filter((f) => f.activity === a.key) }))
+  .filter((s) => s.cards.length > 0);
 
 const fmtDate = (d: string) =>
   d ? new Date(d + "T00:00:00Z").toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric", timeZone: "UTC" }) : "";
@@ -64,7 +75,7 @@ const DEV = import.meta.env.DEV;
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Peregrination — activities</title>
+<title>Peregrination</title>
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@100;300;400;500&display=swap" rel="stylesheet" />
@@ -81,6 +92,18 @@ const DEV = import.meta.env.DEV;
   .sub { color: var(--muted); font-size: 14px; margin: 0; font-weight: 300; }
 
   .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 18px; margin-top: 28px; }
+  /* activity sections: a labelled band per type, only rendered when populated */
+  .activity-section { margin-top: 40px; }
+  .activity-section .grid { margin-top: 16px; }
+  .section-title {
+    display: flex; align-items: baseline; gap: 10px;
+    font-size: var(--fs-sub); font-weight: 300; margin: 0;
+    padding-bottom: 12px; border-bottom: 1px solid var(--line);
+  }
+  .section-count {
+    font-family: var(--font-data); font-size: 12px; letter-spacing: 0.06em;
+    color: var(--muted);
+  }
   .card {
     display: block; text-decoration: none; color: var(--ink);
     background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius);
@@ -129,7 +152,7 @@ const DEV = import.meta.env.DEV;
   <header>
     <div class="head-text">
       <p class="eyebrow">Share the Adventure</p>
-      <h1>Peregrination</h1>
+      <h1>Peregrination.app</h1>
     </div>
   </header>
 
@@ -138,26 +161,34 @@ const DEV = import.meta.env.DEV;
       <span class="plus">+</span>
       <span>Add Your Activity</span>
     </a>
-    {flights.map((f) => (
-        <div class="card-wrap">
-          <a class="card" href={`/view?flight=${f.slug}`}>
-            <div class="thumb" style={f.thumb ? `background-image:url('${f.thumb}')` : ""}>
-              <span class="activity-badge">{ACTIVITY_LABEL[f.activity]}</span>
-            </div>
-            <div class="card-body">
-              <h2>{f.title}</h2>
-              <p class="meta">{[fmtDate(f.date), f.name, f.location].filter(Boolean).join(" · ")}</p>
-              <div class="chips">
-                <span class="chip">{fmtDur(f.durationMin)}</span>
-                <span class="chip">{f.maxAlt} m</span>
-                <span class="chip">{f.photos} photos</span>
-              </div>
-            </div>
-          </a>
-          {DEV && <a class="card-edit" href={`/edit?flight=${f.slug}`}>Edit</a>}
-        </div>
-      ))}
   </div>
+
+  {sections.map((sec) => (
+    <section class="activity-section">
+      <h2 class="section-title">{sec.label} <span class="section-count">{sec.cards.length}</span></h2>
+      <div class="grid">
+        {sec.cards.map((f) => (
+          <div class="card-wrap">
+            <a class="card" href={`/view?flight=${f.slug}`}>
+              <div class="thumb" style={f.thumb ? `background-image:url('${f.thumb}')` : ""}>
+                <span class="activity-badge">{ACTIVITY_LABEL[f.activity]}</span>
+              </div>
+              <div class="card-body">
+                <h2>{f.title}</h2>
+                <p class="meta">{[fmtDate(f.date), f.name, f.location].filter(Boolean).join(" · ")}</p>
+                <div class="chips">
+                  <span class="chip">{fmtDur(f.durationMin)}</span>
+                  <span class="chip">{f.maxAlt} m</span>
+                  <span class="chip">{f.photos} photos</span>
+                </div>
+              </div>
+            </a>
+            {DEV && <a class="card-edit" href={`/edit?flight=${f.slug}`}>Edit</a>}
+          </div>
+        ))}
+      </div>
+    </section>
+  ))}
 
   {flights.length === 0 && (
     <div class="empty">No activities yet. Add one above, or drop a bundle at <code>public/flights/&lt;slug&gt;/flight.json</code>.</div>

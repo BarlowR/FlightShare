@@ -197,11 +197,18 @@ button:focus-visible, input:focus-visible { outline: 2px solid var(--accent); ou
   display: block; box-shadow: 0 24px 80px rgba(0, 0, 0, 0.6);
   touch-action: pan-y pinch-zoom;   /* let horizontal swipes drive prev/next */
 }
-/* annotation note text */
+/* annotation note text — an inset card (like the photo frame), tinted a shade
+   off the panel so the text reads as its own surface. margin-top drops it clear
+   of the close button pinned to the panel's top-right corner. */
 .lb-note {
   width: 100%; overflow: auto;
   font-size: 17px; font-weight: 300; line-height: 1.5; color: var(--ink);
   white-space: pre-wrap;
+  margin-top: 34px;
+  padding: 14px 16px;
+  background: var(--panel-soft);
+  border: 1px solid var(--line); border-radius: var(--radius);
+  box-shadow: 0 24px 80px rgba(0, 0, 0, 0.6);
 }
 
 /* note mode: same corner and same width as the photo panel (so navigating

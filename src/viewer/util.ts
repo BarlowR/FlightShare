@@ -31,7 +31,7 @@ export function haversine(a: { lat: number; lon: number }, b: { lat: number; lon
  *  track is uniformly sampled, but a bsearch stays correct if it isn't. */
 export function interpAt(t: number): TrackPoint {
   const pts = S.pts;
-  if (!pts.length) return { t: 0, lat: 0, lon: 0, alt: 0 };
+  if (!pts.length) return { t: 0, lat: 0, lon: 0, alt: 0, alt0: 0 };
   if (t <= 0) return pts[0];
   if (t >= S.TOTAL) return pts[pts.length - 1];
   let lo = 0, hi = pts.length - 1;
@@ -45,6 +45,7 @@ export function interpAt(t: number): TrackPoint {
     lat: a.lat + (b.lat - a.lat) * f,
     lon: a.lon + (b.lon - a.lon) * f,
     alt: a.alt + (b.alt - a.alt) * f,
+    alt0: a.alt0 + (b.alt0 - a.alt0) * f,
   };
 }
 

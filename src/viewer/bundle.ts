@@ -114,7 +114,7 @@ export async function loadBundle() {
   let lastAlt = 0;
   S.pts = b.track.points.map(([t, lat, lon, alt]: number[]) => {
     if (Number.isFinite(alt)) lastAlt = alt;
-    return { t, lat, lon, alt: lastAlt };
+    return { t, lat, lon, alt: lastAlt, alt0: lastAlt };
   });
   S.TOTAL = S.pts[S.pts.length - 1].t;
 
