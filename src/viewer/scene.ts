@@ -196,19 +196,26 @@ export async function initCesium(token: string) {
     },
   });
 
-  /* markers = a trackpoint dot (below) + a pin (above). The dots stay as
-     depth-tested entities so they hide behind terrain and sit under the pins.
-     The pins are magnifying-glass thumbnails (photos) or note icons
-     (annotations); they're drawn over the terrain (disableDepthTestDistance:
-     Infinity) so a pin is never buried behind a ridge — always visible and
-     pickable. That flag disables the depth test, so the depth buffer can't
-     order overlapping pins; instead each pin gets its OWN billboard collection
-     (one draw command each) and Cesium's translucent pass depth-sorts the
-     commands back-to-front, so a nearer pin paints over a farther one. We turn
-     order-independent translucency off (set in the Viewer options above) so
-     that back-to-front sort is what wins. Sorting is Cesium's job here — no
-     per-frame rebuild, so no flicker. */
-  type Pin = { pos: any; image: any; px: number; swellAt: number[]; id: any; bb: any };
+  /* -------- item markers (photo + annotation pins) --------
+     Every rule these have to satisfy at once:
+       1. a pin is always drawn over the terrain, never buried behind a ridge
+          (disableDepthTestDistance: Infinity);
+       2. among pins, a nearer one is drawn over a farther one;
+       3. the trackpoint dot below each pin stays behind the pins (and hides
+          behind terrain), so it never covers an icon;
+       4. no flicker.
+     Rule 1 turns the depth test off, so the depth buffer can't do rule 2 for us
+     — draw order has to. In one collection with the depth test disabled, the
+     billboard in slot 0 paints ON TOP (verified empirically: Cesium draws the
+     collection back-to-front by insertion, so the first-added is drawn last).
+     So we own that order: every frame we sort the pins near→far and, when the
+     order changes, reassign each slot's contents (image/pos/size/id) so the
+     NEAREST pin sits in slot 0 and paints on top. We only mutate existing
+     billboards (never add/remove) and address images by a stable atlas id, so
+     nothing re-uploads and nothing flickers. Order-independent translucency is
+     off (Viewer options) so this ordering is what the GPU honors. Dots (rule 3)
+     are ordinary depth-tested entities, drawn under the pins. */
+  type Pin = { pos: any; image: any; imgId: string; px: number; swellAt: number[]; id: any };
   const pins: Pin[] = [];
 
   const dot = (pos: any, id: any) => {
@@ -236,10 +243,10 @@ export async function initCesium(token: string) {
     const id = { __photoIndex: g.members[0] };            // click opens the group's first photo
     dot(pos, id);
     pins.push({
-      pos, image: groupIcons[gi] || S.PHOTOS[g.members[0]].thumb,
+      pos, image: groupIcons[gi] || S.PHOTOS[g.members[0]].thumb, imgId: `photo-${gi}`,
       px: g.members.length > 1 ? 58 : 46,
       swellAt: g.members.map(mi => S.PHOTOS[mi].t),        // swell near ANY member's time
-      id, bb: null,
+      id,
     });
   });
 
@@ -251,32 +258,47 @@ export async function initCesium(token: string) {
       const pos = Cesium.Cartesian3.fromDegrees(a.lon, a.lat, a.alt);
       const id = { __annotIndex: ai };
       dot(pos, id);
-      pins.push({ pos, image: annotIcon, px: 46, swellAt: [a.tPos], id, bb: null });
+      pins.push({ pos, image: annotIcon, imgId: "annot", px: 46, swellAt: [a.tPos], id });
     });
   }
 
-  /* one collection per pin (see note above) so the translucent sort orders them */
-  for (const p of pins) {
-    const coll = viewer.scene.primitives.add(new Cesium.BillboardCollection({ scene: viewer.scene }));
-    p.bb = coll.add({
-      position: p.pos, image: p.image,
-      width: p.px, height: Math.round(p.px * MARKER_ASPECT),
+  /* one collection, one fixed billboard per pin. slotPin[i] tracks which pin
+     billboard `slots[i]` currently shows, so we only re-image a slot when the
+     sorted order actually moves a different pin into it. */
+  const applyImage = (bb: any, p: Pin) => {
+    bb.position = p.pos;
+    bb.width = p.px; bb.height = Math.round(p.px * MARKER_ASPECT);
+    bb.id = p.id;
+    bb.setImage(p.imgId, p.image);   // stable id → atlas reuse, no re-upload
+  };
+  const pinCollection = viewer.scene.primitives.add(new Cesium.BillboardCollection({ scene: viewer.scene }));
+  const slots = pins.map((p) => {
+    const bb = pinCollection.add({
       verticalOrigin: Cesium.VerticalOrigin.BOTTOM,       // pin sits ABOVE the trackpoint
       horizontalOrigin: Cesium.HorizontalOrigin.CENTER,
       eyeOffset: new Cesium.Cartesian3(0, 0, -30),
-      disableDepthTestDistance: Number.POSITIVE_INFINITY, // always over terrain
-      id: p.id,
+      disableDepthTestDistance: Number.POSITIVE_INFINITY, // always over terrain (rule 1)
     });
-  }
+    applyImage(bb, p);
+    return bb;
+  });
+  const slotPin = pins.slice();   // slot i initially shows pins[i]
 
-  /* swell: grow a pin as playback passes it. Just updates each pin's scale in
-     place every frame — no add/remove, so nothing flickers. */
-  if (pins.length && !reducedMotion) {
+  if (pins.length) {
     viewer.scene.preRender.addEventListener(() => {
+      /* rule 2: nearest pin into slot 0, which paints on top (see note above) */
+      const eye = viewer.camera.positionWC;
+      const sorted = [...pins].sort((a, b) =>
+        Cesium.Cartesian3.distanceSquared(a.pos, eye) - Cesium.Cartesian3.distanceSquared(b.pos, eye));
+      for (let i = 0; i < sorted.length; i++) {
+        if (slotPin[i] !== sorted[i]) { applyImage(slots[i], sorted[i]); slotPin[i] = sorted[i]; }
+      }
+      /* swell: grow a pin as playback passes it (updates the slot's current pin) */
       const t = Cesium.JulianDate.secondsDifference(clock.currentTime, clock.startTime);
-      for (const p of pins) {
-        const d = Math.min(...p.swellAt.map(tm => Math.abs(t - tm)));
-        p.bb.scale = 1 + 0.35 * Math.max(0, 1 - d / 14);
+      for (let i = 0; i < slots.length; i++) {
+        if (reducedMotion) { slots[i].scale = 1; continue; }
+        const d = Math.min(...slotPin[i].swellAt.map(tm => Math.abs(t - tm)));
+        slots[i].scale = 1 + 0.35 * Math.max(0, 1 - d / 14);
       }
     });
   }
