@@ -155,6 +155,7 @@ export function stepLightbox(dir: number) {
 /** Horizontal swipe on the photo (or note) → previous/next. Call once at
  *  startup. */
 export function initLightboxGestures() {
+  const img = $("lbImg");
   let x0 = 0, y0 = 0, active = false;
   const onDown = (e: PointerEvent) => { active = true; x0 = e.clientX; y0 = e.clientY; };
   const onUp = (e: PointerEvent) => {
@@ -164,10 +165,16 @@ export function initLightboxGestures() {
     // mostly-horizontal drag past a threshold: swipe left = next, right = prev
     if (Math.abs(dx) > 45 && Math.abs(dx) > Math.abs(dy) * 1.4) {
       stepLightbox(dx < 0 ? 1 : -1);
+      return;
+    }
+    // a clean tap (not a swipe) on the photo opens the full-res image in a new tab
+    if (e.currentTarget === img && Math.hypot(dx, dy) < 10) {
+      const ph = S.PHOTOS[S.lbIndex];
+      if (ph) window.open(ph.img, "_blank", "noopener,noreferrer");
     }
   };
   // bind to both the photo and the text-note surface so swiping works in either
-  for (const el of [$("lbImg"), $("lbNote")]) {
+  for (const el of [img, $("lbNote")]) {
     el.addEventListener("pointerdown", onDown);
     el.addEventListener("pointerup", onUp);
     el.addEventListener("pointercancel", () => { active = false; });

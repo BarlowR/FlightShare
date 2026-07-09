@@ -195,6 +195,7 @@ button:focus-visible, input:focus-visible { outline: 2px solid var(--accent); ou
   width: 100%; height: auto; min-height: 0; max-height: 100%; object-fit: cover;
   border-radius: var(--radius); border: 1px solid var(--line);
   display: block; box-shadow: 0 24px 80px rgba(0, 0, 0, 0.6);
+  cursor: zoom-in;   /* tapping opens the full-res photo in a new tab */
   touch-action: pan-y pinch-zoom;   /* let horizontal swipes drive prev/next */
 }
 /* annotation note text — an inset card (like the photo frame), tinted a shade
